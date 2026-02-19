@@ -34,7 +34,7 @@ The stack:
 ### One-command setup
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/arkangelai/second-brain/main/setup.sh | bash
+curl -fsSL https://raw.githubusercontent.com/arkangelai/second-brain/initial-setup/setup.sh | bash
 ```
 
 Or step by step:
