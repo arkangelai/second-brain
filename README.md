@@ -142,10 +142,12 @@ Each file in `01_thinking/` groups related notes with context. They accumulate "
 
 ### `06_system/content-engine/` — Content Creation System
 
-Optional but powerful. Three files that turn your notes into published content:
+Three files that turn your accumulated knowledge into published content:
 - `voice-profile.md` — Who you are, your audience, your tone
 - `structures.md` — Proven post formats with fill-in templates
 - `learnings.md` — What worked, what didn't, running insights
+
+See the [Content Engine](#content-engine) section below for the full workflow.
 
 ---
 
@@ -302,15 +304,7 @@ Create a reference note in 02_reference/sources/books/ and connect it
 to relevant thinking notes. Update the INDEX.
 ```
 
-### 5. Draft content from your notes
-
-```
-Read the voice profile in 06_system/content-engine/voice-profile.md and
-the structures in structures.md. Then search the vault for ideas about
-[topic] and draft 3 post options — one for X and two for LinkedIn.
-```
-
-### 6. Weekly review
+### 5. Weekly review
 
 ```
 Search all notes modified this week. Summarize what was added,
@@ -318,12 +312,222 @@ what connections were made, and suggest 3 notes that should exist
 but don't yet. Add breadcrumbs to the relevant MOCs.
 ```
 
-### 7. Deep research synthesis
+### 6. Deep research synthesis
 
 ```
 I need to understand [complex topic]. Search the vault for all related
 notes, then synthesize them into a structured brief. Cite sources
 using [[wiki links]].
+```
+
+---
+
+## Content Engine
+
+The real power of a second brain isn't storing information — it's **generating new things from everything you've accumulated**. Books, social media posts, articles, presentations, newsletters. The more you capture, the richer the output.
+
+The content engine is the system that turns your vault into a publishing machine.
+
+### How It Works
+
+```
+  Your vault (months/years of notes, books, ideas, references)
+      ↓
+  Agent searches across ALL your knowledge
+      ↓
+  Finds connections you didn't see
+      ↓
+  Drafts content in YOUR voice using YOUR structures
+      ↓
+  You review in Obsidian → edit → publish
+      ↓
+  Track what worked → feed learnings back into the system
+```
+
+The key insight: **the agent has access to your entire history of thinking**. It doesn't just write from a prompt — it writes from hundreds of notes, book summaries, podcast insights, and your own accumulated observations. That's what makes the output uniquely yours.
+
+### Setup (One Time)
+
+Edit these three files in `06_system/content-engine/`:
+
+**1. `voice-profile.md`** — Teach the agent who you are:
+- Your company, audience, and content pillars
+- Your tone (direct? reflective? technical? casual?)
+- Paste 3-5 of your best posts as calibration examples
+- List what you do NOT sound like (corporate jargon, hype, etc.)
+
+**2. `structures.md`** — Give it proven formats to use:
+- 8 templates included (counterintuitive truth, hard truth list, personal lesson, etc.)
+- Each has a pattern, a fill-in template, and which platform it works for
+- Add your own as you find posts you love
+
+**3. `learnings.md`** — Build a feedback loop:
+- Weekly: what performed well, what didn't, why
+- Running insights that accumulate over time
+- The agent reads this before drafting to avoid repeating mistakes
+
+### Content Creation Prompts
+
+#### Social media posts (X / LinkedIn)
+
+```
+Read voice-profile.md and structures.md from 06_system/content-engine/.
+Then search the vault for ideas about [topic].
+
+Draft 3 post options:
+- 1 for X (Twitter) using "The Counterintuitive Truth" structure
+- 1 for LinkedIn using "The Personal Lesson" structure
+- 1 for LinkedIn using "The Framework Share" structure
+
+Use insights from actual vault notes. Cite which notes inspired each post.
+Check learnings.md to avoid patterns that underperformed.
+```
+
+#### Generate a week of content
+
+```
+Read voice-profile.md, structures.md, and learnings.md from the content engine.
+Search the vault for the strongest ideas across all MOCs.
+
+Plan 5 posts for this week:
+- Mon: X post (observation or counterintuitive truth)
+- Tue: LinkedIn post (personal lesson)
+- Wed: X + LinkedIn (hard truth list or framework)
+- Thu: Product update / build in public (both platforms)
+- Fri: "Here's what we're seeing" or "We used to think" (both)
+
+For each post: pick an idea, choose a structure, write the draft,
+and note which vault sources informed it.
+Create each as a pipeline file in 03_creating/pipeline/.
+```
+
+#### Write an article or essay
+
+```
+I want to write a long-form article about [topic].
+
+1. Search the entire vault for related notes — books, podcast episodes,
+   approaches, and my own thinking notes
+2. Outline the article with sections, using the strongest insights
+   from across the vault
+3. For each section, cite the specific notes that support the argument
+4. Write the first draft (~1500 words), weaving together ideas from
+   different sources into a coherent narrative
+5. Use the voice from voice-profile.md
+
+Save the draft in 03_creating/drafts/.
+```
+
+#### Write a book chapter
+
+```
+I'm writing a book about [topic]. This is chapter [N]: [chapter title].
+
+1. Search the vault exhaustively — books I've read, podcast insights,
+   strategies, case studies, and my own thinking notes related to this chapter
+2. Create a detailed outline with the key arguments and supporting evidence
+3. Write the chapter draft (~3000 words), synthesizing insights
+   from across my entire knowledge base
+4. Include [[wiki links]] to source notes so I can verify and expand later
+5. Match the voice in voice-profile.md
+
+Save in 03_creating/drafts/book/chapter-[N]-[title].md
+```
+
+#### Write a newsletter edition
+
+```
+Read the content engine files and search the vault for the most
+interesting ideas I've captured recently.
+
+Write a newsletter edition:
+- Subject line: compelling, not clickbait
+- Opening: a personal hook or observation
+- Body: 2-3 insights from my vault, connected with a thread
+- Close: a question or takeaway for the reader
+- Tone: voice-profile.md
+
+Save in 03_creating/drafts/.
+```
+
+#### Repurpose existing content
+
+```
+Read [path to published post or article in 04_published/].
+
+Now search the vault for related notes that could expand on this.
+Create 3 derivative pieces:
+1. A Twitter thread that breaks down the main argument
+2. A LinkedIn post with a different angle on the same idea
+3. A short article draft that goes deeper using vault sources
+
+Save all three in 03_creating/pipeline/.
+```
+
+### The Content Pipeline
+
+Each piece of content lives as a file in `03_creating/pipeline/` and moves through stages:
+
+```
+idea → draft → ready → published
+```
+
+The pipeline file tracks everything:
+
+```markdown
+# Post Title
+
+**Status:** draft
+**Platform:** LinkedIn
+**Pillar:** Business Strategy
+**Structure:** The Personal Lesson
+**Source notes:** [[7-powers]], [[crossing-the-chasm]], [[blitzscaling]]
+
+## Core Idea
+What's the one takeaway?
+
+## Draft
+The actual post text.
+
+## Notes
+Revisions, alternatives, performance after publishing.
+```
+
+When published, move the file to `04_published/` and log results in `learnings.md`.
+
+### Why This Gets Better Over Time
+
+The more you use it, the better it gets:
+
+1. **More notes = richer output.** A vault with 50 notes produces decent content. A vault with 500 notes produces content that connects ideas no human would think to combine.
+2. **Learnings compound.** The agent reads `learnings.md` before every draft. Patterns that work get reinforced. Patterns that don't get avoided.
+3. **MOC breadcrumbs guide the agent.** Every session leaves trails that make the next session smarter.
+4. **Your voice sharpens.** As you add best-performing posts to `voice-profile.md`, the agent's calibration improves.
+
+---
+
+## Updating
+
+When we release new templates, structures, or improvements, pull them into your vault without losing your notes:
+
+```bash
+# Update Second Brain (pulls new templates, won't overwrite your notes)
+cd ~/Documents/Second_Brain && bash update.sh
+```
+
+This will:
+- Pull the latest changes from the repo
+- Copy any **new** template files (won't overwrite files you've already edited)
+- Update QMD if a new version is available
+- Re-index your vault
+
+You can also update manually:
+
+```bash
+cd ~/Documents/Second_Brain
+git pull origin initial-setup
+cp -rn vault/* .              # -n = no clobber (won't overwrite existing files)
+qmd update && qmd embed
 ```
 
 ---
