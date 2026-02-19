@@ -9,6 +9,13 @@ Thumbs.db
 # QMD cache (index is local, not shared)
 .cache/
 
+# Node
+node_modules/
+dist/
+
+# Draft prompts
+.draft-prompt.md
+
 # Editor
 *.swp
 *.swo

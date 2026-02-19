@@ -20,6 +20,7 @@ The stack:
 | **Reading** | [Obsidian](https://obsidian.md) | Visual navigation, `[[wiki links]]`, graph view |
 | **Search** | [QMD](https://github.com/tobi/qmd) | BM25 + vector + reranking — 100% local |
 | **Agent** | Any (Claude Code, Cursor, Codex, etc.) | Reads, searches, and creates from your vault |
+| **CLI** | `second-brain` | Setup, search, scaffold, and draft from the terminal |
 
 ---
 
@@ -31,42 +32,33 @@ The stack:
 - [Bun](https://bun.sh) installed (`curl -fsSL https://bun.sh/install | bash`)
 - [Obsidian](https://obsidian.md) installed (free, for reading/navigating your vault)
 
+### Install
+
+```bash
+bun install -g @arkangelai/second-brain
+```
+
+Or run without installing:
+
+```bash
+bunx @arkangelai/second-brain init
+```
+
 ### One-command setup
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/arkangelai/second-brain/initial-setup/setup.sh)
+second-brain init
 ```
 
-This clones the repo, installs QMD, indexes your vault, and downloads the local AI models (~2GB on first run).
+This installs QMD, creates your vault at `~/Documents/Second_Brain`, copies templates, indexes everything, and downloads the local AI models (~2GB on first run).
 
-Or step by step:
+Custom vault path:
 
 ```bash
-# 1. Clone this repo (note: the default branch is "initial-setup")
-git clone -b initial-setup https://github.com/arkangelai/second-brain.git ~/Documents/Second_Brain
-
-# 2. Copy vault templates to root
-cp -rn ~/Documents/Second_Brain/vault/* ~/Documents/Second_Brain/
-
-# 3. Install QMD globally
-bun install -g @tobilu/qmd
-
-# 4. Create the QMD config
-mkdir -p ~/.config/qmd
-cat > ~/.config/qmd/index.yml << 'EOF'
-collections:
-  second-brain:
-    path: ~/Documents/Second_Brain
-    pattern: "**/*.md"
-EOF
-
-# 5. Index your vault
-qmd collection add ~/Documents/Second_Brain --name second-brain
-qmd embed
-
-# 6. Verify it works
-qmd status
-qmd query "how to get started"
+second-brain init --vault ~/my-vault
+# or
+export SECOND_BRAIN_PATH=~/my-vault
+second-brain init
 ```
 
 ### Open in Obsidian
@@ -75,6 +67,96 @@ qmd query "how to get started"
 2. Click "Open folder as vault"
 3. Select `~/Documents/Second_Brain`
 4. Done — you'll see wiki links, graph view, and full navigation
+
+---
+
+## CLI Commands
+
+### `second-brain init`
+
+Set up vault, install QMD, create config, index.
+
+```bash
+second-brain init
+second-brain init --vault ~/custom/path
+```
+
+### `second-brain update`
+
+Pull new templates (won't overwrite your files), update QMD, re-index.
+
+```bash
+second-brain update
+```
+
+### `second-brain status`
+
+File counts per folder and QMD health check.
+
+```bash
+second-brain status
+```
+
+### `second-brain search "query"`
+
+Hybrid search across your vault using QMD (BM25 + vector + reranking).
+
+```bash
+second-brain search "growth strategies"
+second-brain search "AI in healthcare"
+```
+
+### `second-brain create note "title"`
+
+Scaffold a new atomic note in `01_thinking/notes/`.
+
+```bash
+second-brain create note "quality is the hard part"
+# → 01_thinking/notes/quality-is-the-hard-part.md
+```
+
+### `second-brain create post "title"`
+
+Scaffold a new pipeline post in `03_creating/pipeline/`.
+
+```bash
+second-brain create post "AI replacing docs"
+# → 03_creating/pipeline/ai-replacing-docs.md
+```
+
+### `second-brain draft "topic"`
+
+**The killer feature.** Searches your vault, loads your voice profile + structures + learnings, assembles a rich prompt, and launches your AI agent.
+
+```bash
+second-brain draft "leadership lessons"
+second-brain draft "AI in healthcare" --agent cursor
+second-brain draft "growth" --agent codex
+```
+
+Agent detection order: `claude` > `cursor` > `codex` (override with `--agent`).
+
+What happens:
+1. Searches vault via QMD for the 10 most relevant notes
+2. Reads your voice profile, structures, and learnings
+3. Assembles a prompt with all context + instructions
+4. Launches the detected agent (or saves `.draft-prompt.md` if none found)
+
+### Global Options
+
+```bash
+--vault <path>    Override vault path
+--version, -v     Show version
+--help, -h        Show help
+```
+
+### Vault Path Resolution
+
+Priority order:
+1. `--vault` flag
+2. `$SECOND_BRAIN_PATH` environment variable
+3. `~/.config/second-brain/config.json`
+4. `~/Documents/Second_Brain` (default)
 
 ---
 
@@ -159,6 +241,12 @@ QMD provides three search modes, all running locally:
 qmd search "exact phrase"       # Fast BM25 keyword search
 qmd vsearch "concept or idea"   # Semantic vector search
 qmd query "broader topic"       # Hybrid + reranking (best quality, slower)
+```
+
+Or use the CLI wrapper:
+
+```bash
+second-brain search "broader topic"   # Runs qmd query under the hood
 ```
 
 ### Under the Hood
@@ -312,12 +400,10 @@ what connections were made, and suggest 3 notes that should exist
 but don't yet. Add breadcrumbs to the relevant MOCs.
 ```
 
-### 6. Deep research synthesis
+### 6. Draft content (or just use the CLI!)
 
-```
-I need to understand [complex topic]. Search the vault for all related
-notes, then synthesize them into a structured brief. Cite sources
-using [[wiki links]].
+```bash
+second-brain draft "your topic here"
 ```
 
 ---
@@ -333,7 +419,7 @@ The content engine is the system that turns your vault into a publishing machine
 ```
   Your vault (months/years of notes, books, ideas, references)
       ↓
-  Agent searches across ALL your knowledge
+  second-brain draft "topic" (or agent searches manually)
       ↓
   Finds connections you didn't see
       ↓
@@ -366,7 +452,22 @@ Edit these three files in `06_system/content-engine/`:
 - Running insights that accumulate over time
 - The agent reads this before drafting to avoid repeating mistakes
 
-### Content Creation Prompts
+### Content Creation with the CLI
+
+The fastest way to draft content:
+
+```bash
+# Draft posts about a topic
+second-brain draft "leadership lessons"
+
+# Use a specific agent
+second-brain draft "AI in healthcare" --agent cursor
+
+# Scaffold a pipeline post manually
+second-brain create post "why quality compounds"
+```
+
+### Content Creation with Agent Prompts
 
 #### Social media posts (X / LinkedIn)
 
@@ -508,26 +609,14 @@ The more you use it, the better it gets:
 
 ## Updating
 
-When we release new templates, structures, or improvements, pull them into your vault without losing your notes:
+When we release new templates, structures, or improvements:
 
 ```bash
-# Update Second Brain (pulls new templates, won't overwrite your notes)
-cd ~/Documents/Second_Brain && bash update.sh
-```
+# Update the CLI
+bun install -g @arkangelai/second-brain
 
-This will:
-- Pull the latest changes from the repo
-- Copy any **new** template files (won't overwrite files you've already edited)
-- Update QMD if a new version is available
-- Re-index your vault
-
-You can also update manually:
-
-```bash
-cd ~/Documents/Second_Brain
-git pull origin initial-setup
-cp -rn vault/* .              # -n = no clobber (won't overwrite existing files)
-qmd update && qmd embed
+# Pull new templates into your vault (won't overwrite your files)
+second-brain update
 ```
 
 ---
@@ -541,12 +630,11 @@ qmd update && qmd embed
 # After adding .txt files (converts to .md first):
 ./06_system/scripts/txt-to-md.sh
 
-# Check index health:
-qmd status
+# Check vault health:
+second-brain status
 
-# See what's indexed:
-qmd collection list
-qmd ls second-brain
+# Or directly:
+qmd status
 ```
 
 ### Important Rules
@@ -616,6 +704,7 @@ qmd context add ~/Documents/Second_Brain/02_reference/sources/books "Book summar
 |-----------|------------|
 | Files | Markdown (.md) |
 | Reader | Obsidian (free) |
+| CLI | `@arkangelai/second-brain` (Bun, zero deps) |
 | Search engine | QMD |
 | Database | SQLite + FTS5 + sqlite-vec |
 | Embeddings | EmbeddingGemma-300M (GGUF, local) |
