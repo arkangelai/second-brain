@@ -6,6 +6,8 @@ set -e
 
 VAULT_PATH="${SECOND_BRAIN_PATH:-$HOME/Documents/Second_Brain}"
 QMD_CONFIG="$HOME/.config/qmd/index.yml"
+REPO_URL="https://github.com/arkangelai/second-brain.git"
+REPO_BRANCH="initial-setup"
 
 echo ""
 echo "  Second Brain - Setup"
@@ -34,19 +36,34 @@ check_command "git" "Install git: https://git-scm.com"
 
 echo ""
 
-# ─── Clone or copy vault structure ──────────────────────────────────
+# ─── Clone the repo ─────────────────────────────────────────────────
 
 if [ -d "$VAULT_PATH/.git" ]; then
-  echo "  Vault already exists at $VAULT_PATH — skipping clone."
-elif [ -d "$VAULT_PATH" ]; then
-  echo "  Directory exists at $VAULT_PATH but is not a git repo."
-  echo "  Creating vault structure inside it..."
+  echo "  Vault already exists at $VAULT_PATH — pulling latest..."
+  git -C "$VAULT_PATH" pull --ff-only 2>/dev/null || true
 else
-  echo "  Creating vault at $VAULT_PATH..."
-  mkdir -p "$VAULT_PATH"
+  if [ -d "$VAULT_PATH" ] && [ "$(ls -A "$VAULT_PATH" 2>/dev/null)" ]; then
+    echo "  ⚠ Directory $VAULT_PATH already exists and is not empty."
+    echo "    Back it up or remove it, then run this script again."
+    exit 1
+  fi
+  echo "  Cloning repo..."
+  git clone -b "$REPO_BRANCH" "$REPO_URL" "$VAULT_PATH"
+  echo "  ✓ Repo cloned"
 fi
 
-# Create directory structure
+# ─── Move vault files to root ────────────────────────────────────────
+
+# The repo has template files under vault/. Copy them to the vault root
+# so the user works directly in the Second_Brain directory.
+if [ -d "$VAULT_PATH/vault" ]; then
+  echo "  Setting up vault files..."
+  cp -rn "$VAULT_PATH/vault/"* "$VAULT_PATH/" 2>/dev/null || true
+  echo "  ✓ Vault files ready"
+fi
+
+# ─── Create any missing directories ─────────────────────────────────
+
 mkdir -p "$VAULT_PATH/00_inbox"
 mkdir -p "$VAULT_PATH/01_thinking/notes"
 mkdir -p "$VAULT_PATH/02_reference/approaches"
@@ -61,52 +78,13 @@ mkdir -p "$VAULT_PATH/05_archive"
 mkdir -p "$VAULT_PATH/06_system/content-engine"
 mkdir -p "$VAULT_PATH/06_system/templates"
 mkdir -p "$VAULT_PATH/06_system/scripts"
+mkdir -p "$VAULT_PATH/attachments"
 
-echo "  ✓ Vault structure created"
-
-# ─── Copy template files if they don't exist ────────────────────────
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-copy_if_missing() {
-  local src="$1"
-  local dest="$2"
-  if [ ! -f "$dest" ] && [ -f "$src" ]; then
-    cp "$src" "$dest"
-    echo "  ✓ Created $(basename "$dest")"
-  fi
-}
-
-# Core files
-copy_if_missing "$SCRIPT_DIR/vault/INDEX.md" "$VAULT_PATH/INDEX.md"
-copy_if_missing "$SCRIPT_DIR/vault/AGENTS.md" "$VAULT_PATH/AGENTS.md"
-
-# MOCs
-copy_if_missing "$SCRIPT_DIR/vault/01_thinking/growth.md" "$VAULT_PATH/01_thinking/growth.md"
-copy_if_missing "$SCRIPT_DIR/vault/01_thinking/product.md" "$VAULT_PATH/01_thinking/product.md"
-copy_if_missing "$SCRIPT_DIR/vault/01_thinking/leadership.md" "$VAULT_PATH/01_thinking/leadership.md"
-copy_if_missing "$SCRIPT_DIR/vault/01_thinking/life.md" "$VAULT_PATH/01_thinking/life.md"
-copy_if_missing "$SCRIPT_DIR/vault/01_thinking/content-creation.md" "$VAULT_PATH/01_thinking/content-creation.md"
-
-# Content engine
-copy_if_missing "$SCRIPT_DIR/vault/06_system/content-engine/voice-profile.md" "$VAULT_PATH/06_system/content-engine/voice-profile.md"
-copy_if_missing "$SCRIPT_DIR/vault/06_system/content-engine/structures.md" "$VAULT_PATH/06_system/content-engine/structures.md"
-copy_if_missing "$SCRIPT_DIR/vault/06_system/content-engine/learnings.md" "$VAULT_PATH/06_system/content-engine/learnings.md"
-
-# Templates
-copy_if_missing "$SCRIPT_DIR/vault/06_system/templates/note.md" "$VAULT_PATH/06_system/templates/note.md"
-copy_if_missing "$SCRIPT_DIR/vault/06_system/templates/moc.md" "$VAULT_PATH/06_system/templates/moc.md"
-copy_if_missing "$SCRIPT_DIR/vault/06_system/templates/book.md" "$VAULT_PATH/06_system/templates/book.md"
-copy_if_missing "$SCRIPT_DIR/vault/06_system/templates/pipeline-post.md" "$VAULT_PATH/06_system/templates/pipeline-post.md"
-
-# Scripts
-copy_if_missing "$SCRIPT_DIR/vault/06_system/scripts/txt-to-md.sh" "$VAULT_PATH/06_system/scripts/txt-to-md.sh"
-[ -f "$VAULT_PATH/06_system/scripts/txt-to-md.sh" ] && chmod +x "$VAULT_PATH/06_system/scripts/txt-to-md.sh"
-
-echo ""
+echo "  ✓ Directory structure ready"
 
 # ─── Install QMD ────────────────────────────────────────────────────
 
+echo ""
 if command -v qmd &> /dev/null; then
   echo "  ✓ QMD already installed"
 else
