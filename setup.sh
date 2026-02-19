@@ -54,6 +54,8 @@ fi
 
 # ─── Move vault files to root ────────────────────────────────────────
 
+# The repo has template files under vault/. Copy them to the vault root
+# so the user works directly in the Second_Brain directory.
 if [ -d "$VAULT_PATH/vault" ]; then
   echo "  Setting up vault files..."
   cp -rn "$VAULT_PATH/vault/"* "$VAULT_PATH/" 2>/dev/null || true

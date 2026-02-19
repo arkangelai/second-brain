@@ -34,19 +34,24 @@ The stack:
 ### One-command setup
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/arkangelai/second-brain/initial-setup/setup.sh | bash
+bash <(curl -fsSL https://raw.githubusercontent.com/arkangelai/second-brain/initial-setup/setup.sh)
 ```
+
+This clones the repo, installs QMD, indexes your vault, and downloads the local AI models (~2GB on first run).
 
 Or step by step:
 
 ```bash
-# 1. Clone this repo
-git clone https://github.com/arkangelai/second-brain.git ~/Documents/Second_Brain
+# 1. Clone this repo (note: the default branch is "initial-setup")
+git clone -b initial-setup https://github.com/arkangelai/second-brain.git ~/Documents/Second_Brain
 
-# 2. Install QMD globally
+# 2. Copy vault templates to root
+cp -rn ~/Documents/Second_Brain/vault/* ~/Documents/Second_Brain/
+
+# 3. Install QMD globally
 bun install -g @tobilu/qmd
 
-# 3. Create the QMD config
+# 4. Create the QMD config
 mkdir -p ~/.config/qmd
 cat > ~/.config/qmd/index.yml << 'EOF'
 collections:
@@ -55,11 +60,11 @@ collections:
     pattern: "**/*.md"
 EOF
 
-# 4. Index your vault
+# 5. Index your vault
 qmd collection add ~/Documents/Second_Brain --name second-brain
 qmd embed
 
-# 5. Verify it works
+# 6. Verify it works
 qmd status
 qmd query "how to get started"
 ```
