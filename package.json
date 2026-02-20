@@ -1,0 +1,40 @@
+{
+  "name": "@arkangelai/second-brain",
+  "version": "0.1.0",
+  "description": "A local-first, AI-native knowledge management CLI. Markdown files + semantic search + any AI agent.",
+  "type": "module",
+  "bin": {
+    "second-brain": "bin/second-brain.ts"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "vault/"
+  ],
+  "engines": {
+    "bun": ">=1.0.0"
+  },
+  "scripts": {
+    "dev": "bun run bin/second-brain.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "second-brain",
+    "knowledge-management",
+    "cli",
+    "obsidian",
+    "qmd",
+    "ai",
+    "markdown"
+  ],
+  "author": "Arkangel AI",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/arkangelai/second-brain.git"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0",
+    "@types/bun": "latest"
+  }
+}
