@@ -75,9 +75,16 @@ export function init(vaultFlag?: string): void {
 
   // ── Index the vault ────────────────────────────────────────────────────
   log("Indexing vault...");
-  const update = exec(["qmd", "update"]);
-  if (!update.ok) {
-    exec(["qmd", "collection", "add", vaultPath, "--name", "second-brain"]);
+  // Check if collection already exists
+  const listResult = exec(["qmd", "collection", "list"]);
+  const hasCollection = listResult.ok && listResult.stdout.includes("second-brain");
+  if (hasCollection) {
+    exec(["qmd", "update"]);
+  } else {
+    const add = exec(["qmd", "collection", "add", vaultPath, "--name", "second-brain"]);
+    if (!add.ok) {
+      warn("Failed to create QMD collection. Run manually: qmd collection add " + vaultPath + " --name second-brain");
+    }
   }
   success("Vault indexed");
 
