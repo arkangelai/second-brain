@@ -132,9 +132,10 @@ second-brain create post "AI replacing docs"
 second-brain draft "leadership lessons"
 second-brain draft "AI in healthcare" --agent cursor
 second-brain draft "growth" --agent codex
+second-brain draft "founder content" --agent gateway
 ```
 
-Agent detection order: `claude` > `cursor` > `codex` (override with `--agent`).
+Agent detection order: `claude` > `cursor` > `codex` > `gateway` (gateway is used when an API key is configured).
 
 What happens:
 1. Searches vault via QMD for the 10 most relevant notes
@@ -142,12 +143,97 @@ What happens:
 3. Assembles a prompt with all context + instructions
 4. Launches the detected agent (or saves `.draft-prompt.md` if none found)
 
+### `second-brain config <set|get> ...`
+
+Configure AI Gateway credentials and default model:
+
+```bash
+# Save API key for gateway usage
+second-brain config set apiKey "your_api_key"
+
+# Save default model (optional)
+second-brain config set model "deepinfra/deepseek-v3.2"
+
+# Inspect current settings
+second-brain config get apiKey
+second-brain config get model
+```
+
+You can also set the key via environment variable:
+
+```bash
+export AI_GATEWAY_API_KEY="your_api_key"
+```
+
+When using `--agent gateway`, the CLI sends the assembled draft prompt (including vault search context) to the Vercel AI Gateway API.
+
+### Notion Integration (`publish` / `pull`)
+
+Set up Notion once:
+
+```bash
+# 1) Export your integration token in shell
+export NOTION_API_TOKEN="secret_..."
+
+# 2) Run guided setup (paste database URL or ID when prompted)
+second-brain publish setup
+```
+
+What setup does:
+- Validates database access
+- Infers property mappings from your Notion schema
+- Saves Notion integration config to `~/.config/second-brain/config.json`
+- Stores auth as `"$NOTION_API_TOKEN"` reference in config
+
+Publish local pipeline posts to Notion:
+
+```bash
+# Publish ready posts from 03_creating/pipeline
+second-brain publish
+
+# Preview only (no writes)
+second-brain publish --dry-run
+
+# Publish all statuses, or only specific status
+second-brain publish --all
+second-brain publish --status ready
+
+# Publish one file
+second-brain publish "my-post.md"
+
+# Force update even if hash is unchanged
+second-brain publish --force
+```
+
+After a successful live publish/update, files are moved from `03_creating/pipeline/` to `04_published/`.
+
+Pull Notion properties/metrics back into local markdown:
+
+```bash
+# Pull for all posts in 04_published
+second-brain pull
+
+# Pull one file
+second-brain pull "my-post.md"
+
+# Preview only (no file writes)
+second-brain pull --dry-run
+```
+
+`pull` updates mapped metadata fields and writes a `## Metrics` section in the markdown file when mapped pull fields are available.
+
 ### Global Options
 
 ```bash
---vault <path>    Override vault path
---version, -v     Show version
---help, -h        Show help
+--vault <path>      Override vault path
+--agent <name>      Agent for draft: claude, cursor, codex, gateway
+--model <id>        Model id for gateway draft requests
+--dry-run           Preview publish/pull actions without writing
+--force             Re-publish even when hash matches
+--all               Publish all pipeline posts regardless of status
+--status <value>    Publish only posts with this status
+--version, -v       Show version
+--help, -h          Show help
 ```
 
 ### Vault Path Resolution
