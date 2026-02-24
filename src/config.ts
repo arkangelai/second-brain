@@ -11,7 +11,45 @@ export interface Config {
   vaultPath?: string;
   aiGatewayApiKey?: string;
   defaultModel?: string;
+  integrations?: {
+    notion?: NotionConfig;
+  };
 }
+
+export interface NotionConfig {
+  databaseId: string;
+  auth: string;
+  defaults?: Record<string, string>;
+  propertyMap: PropertyMapping[];
+  bodyMap?: BodyMapping;
+}
+
+export interface PropertyMapping {
+  notionProperty: string;
+  notionType: "title" | "select" | "rich_text" | "date" | "url" | "number";
+  source: "metadata" | "filename" | "title" | "hash" | "static" | "pull-only";
+  sourceKey?: string;
+}
+
+export interface BodyMapping {
+  sections: Array<{
+    markdownHeading: string;
+    notionHeading: string;
+    headingLevel: 2 | 3;
+  }>;
+}
+
+export interface ResolvedConfig extends Omit<Config, "vaultPath"> {
+  vaultPath: string;
+}
+
+export const DEFAULT_NOTION_BODY_MAP: BodyMapping = {
+  sections: [
+    { markdownHeading: "Core Idea", notionHeading: "Idea", headingLevel: 2 },
+    { markdownHeading: "Draft", notionHeading: "Draft", headingLevel: 2 },
+    { markdownHeading: "Notes", notionHeading: "Notes", headingLevel: 2 },
+  ],
+};
 
 function cleanString(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
@@ -19,16 +57,22 @@ function cleanString(value: unknown): string | undefined {
   return trimmed || undefined;
 }
 
-export function loadConfig(): Config {
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function readStoredConfig(): Config {
   if (!existsSync(CONFIG_FILE)) return {};
 
   try {
     const raw = JSON.parse(readFileSync(CONFIG_FILE, "utf-8")) as
       | Record<string, unknown>
       | null;
+
     if (!raw || typeof raw !== "object") return {};
 
     const config: Config = {};
+
     const vaultPath = cleanString(raw.vaultPath);
     const aiGatewayApiKey = cleanString(raw.aiGatewayApiKey);
     const defaultModel = cleanString(raw.defaultModel);
@@ -37,6 +81,10 @@ export function loadConfig(): Config {
     if (aiGatewayApiKey) config.aiGatewayApiKey = aiGatewayApiKey;
     if (defaultModel) config.defaultModel = defaultModel;
 
+    if (isPlainObject(raw.integrations)) {
+      config.integrations = raw.integrations as Config["integrations"];
+    }
+
     return config;
   } catch {
     // ignore malformed config
@@ -44,29 +92,89 @@ export function loadConfig(): Config {
   }
 }
 
-/**
- * Resolve the vault path. Priority:
- * 1. --vault flag (passed as argument)
- * 2. $SECOND_BRAIN_PATH env
- * 3. ~/.config/second-brain/config.json → vaultPath
- * 4. ~/Documents/Second_Brain
- */
-export function resolveVaultPath(flagValue?: string): string {
-  if (flagValue) return resolvePath(flagValue);
-
-  const envPath = process.env.SECOND_BRAIN_PATH;
-  if (envPath) return resolvePath(envPath);
-
-  const config = loadConfig();
-  if (config.vaultPath) return resolvePath(config.vaultPath);
-
-  return DEFAULT_VAULT;
+export function loadConfig(): Config {
+  return readStoredConfig();
 }
 
-export function saveConfig(updates: Partial<Config>): void {
+/**
+ * Resolve env references like "$NOTION_API_TOKEN".
+ */
+export function resolveEnvValue(value?: string): string {
+  if (!value) return "";
+  if (!value.startsWith("$")) return value;
+  const envName = value.slice(1).trim();
+  if (!envName) return "";
+  return process.env[envName] || "";
+}
+
+/**
+ * Resolve full config. Priority for vault path:
+ * 1. --vault flag (passed as argument)
+ * 2. $SECOND_BRAIN_PATH env
+ * 3. ~/.config/second-brain/config.json -> vaultPath
+ * 4. ~/Documents/Second_Brain
+ */
+export function resolveConfig(flagValue?: string): ResolvedConfig {
+  const stored = readStoredConfig();
+
+  const envPath = process.env.SECOND_BRAIN_PATH;
+  const vaultPath = resolvePath(flagValue || envPath || stored.vaultPath || DEFAULT_VAULT);
+
+  const notion = stored.integrations?.notion
+    ? {
+        ...stored.integrations.notion,
+        auth: resolveEnvValue(stored.integrations.notion.auth),
+        bodyMap: stored.integrations.notion.bodyMap || DEFAULT_NOTION_BODY_MAP,
+      }
+    : undefined;
+
+  return {
+    ...stored,
+    vaultPath,
+    integrations: notion ? { notion } : stored.integrations,
+  };
+}
+
+/**
+ * Resolve the vault path only (backward-compatible helper).
+ */
+export function resolveVaultPath(flagValue?: string): string {
+  return resolveConfig(flagValue).vaultPath;
+}
+
+function deepMerge<T extends object>(
+  base: Partial<T>,
+  patch: Partial<T>
+): Partial<T> {
+  const out: Record<string, unknown> = { ...base };
+
+  for (const [key, value] of Object.entries(patch)) {
+    const prev = out[key];
+
+    if (isPlainObject(prev) && isPlainObject(value)) {
+      out[key] = deepMerge(prev as object, value as object);
+      continue;
+    }
+
+    if (value !== undefined) {
+      out[key] = value;
+    }
+  }
+
+  return out as Partial<T>;
+}
+
+export function saveConfig(configOrVaultPath: Partial<Config> | string): void {
+  const stored = readStoredConfig();
+  const patch: Partial<Config> =
+    typeof configOrVaultPath === "string"
+      ? { vaultPath: configOrVaultPath }
+      : configOrVaultPath;
+
+  const merged = deepMerge<Config>(stored, patch) as Config;
+
   mkdirSync(CONFIG_DIR, { recursive: true });
-  const config: Config = { ...loadConfig(), ...updates };
-  writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2) + "\n");
+  writeFileSync(CONFIG_FILE, JSON.stringify(merged, null, 2) + "\n");
 }
 
 export function resolveApiKey(): string | undefined {
@@ -88,7 +196,7 @@ export function resolveModel(flagValue?: string): string {
 
 export function getPackageRoot(): string {
   // The package ships vault/ inside it. Walk up from this file to find it.
-  // src/config.ts → project root
+  // src/config.ts -> project root
   return join(import.meta.dir, "..");
 }
 

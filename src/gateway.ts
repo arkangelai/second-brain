@@ -11,7 +11,8 @@ interface GatewayChunk {
   };
 }
 
-function extractErrorDetails(raw: string): string {
+/** @internal */
+export function extractErrorDetails(raw: string): string {
   try {
     const parsed = JSON.parse(raw) as
       | { error?: { message?: string } | string; message?: string }
@@ -28,7 +29,8 @@ function extractErrorDetails(raw: string): string {
   }
 }
 
-function formatStatusError(status: number, details: string): string {
+/** @internal */
+export function formatStatusError(status: number, details: string): string {
   const suffix = details ? ` Details: ${details}` : "";
 
   if (status === 401 || status === 403) {
@@ -46,7 +48,8 @@ function formatStatusError(status: number, details: string): string {
   return `AI Gateway request failed (${status}).${suffix}`;
 }
 
-function processSseEvent(
+/** @internal */
+export function processSseEvent(
   event: string,
   onDelta: (delta: string) => void
 ): void {

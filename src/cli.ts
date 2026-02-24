@@ -6,12 +6,14 @@ import { status } from "./commands/status.ts";
 import { search } from "./commands/search.ts";
 import { create } from "./commands/create.ts";
 import { draft } from "./commands/draft.ts";
+import { publish } from "./commands/publish.ts";
+import { pull } from "./commands/pull.ts";
 import { configCmd } from "./commands/config-cmd.ts";
 
 const VERSION = "0.1.0";
 
 const HELP = `
-  ${bold("second-brain")} — AI-native knowledge management CLI
+  ${bold("second-brain")} - AI-native knowledge management CLI
 
   ${bold("Usage:")}
     second-brain <command> [options]
@@ -24,12 +26,21 @@ const HELP = `
     create note "title"        Scaffold a new note
     create post "title"        Scaffold a new pipeline post
     draft "topic"              Search vault, assemble prompt, launch agent
+    publish                    Push ready pipeline posts to Notion
+    publish "file.md"          Push a specific post to Notion
+    publish setup              Guided Notion integration setup
+    pull                       Pull Notion metrics into published local posts
+    pull "file.md"             Pull metrics for a specific post
     config <set|get> ...       Manage local second-brain config
 
   ${bold("Options:")}
     --vault <path>             Override vault path
     --agent <name>             Agent for draft: claude, cursor, codex, gateway
     --model <id>               Model id for gateway draft requests
+    --dry-run                  Preview publish/pull actions without writing
+    --force                    Re-publish even when hash matches
+    --all                      Publish all pipeline posts regardless of status
+    --status <value>           Publish only posts with this status
     --version, -v              Show version
     --help, -h                 Show this help
 
@@ -37,13 +48,17 @@ const HELP = `
     --vault flag > $SECOND_BRAIN_PATH > ~/.config/second-brain/config.json > ~/Documents/Second_Brain
 `;
 
-export function run(argv: string[]): void {
+export async function run(argv: string[]): Promise<void> {
   const { values, positionals } = parseArgs({
     args: argv,
     options: {
       vault: { type: "string" },
       agent: { type: "string" },
       model: { type: "string" },
+      status: { type: "string" },
+      "dry-run": { type: "boolean" },
+      force: { type: "boolean" },
+      all: { type: "boolean" },
       version: { type: "boolean", short: "v" },
       help: { type: "boolean", short: "h" },
     },
@@ -86,16 +101,12 @@ export function run(argv: string[]): void {
       break;
 
     case "draft":
-      draft(
+      await draft(
         positionals.slice(1).join(" "),
         values.agent as string | undefined,
         vaultFlag,
         values.model as string | undefined
-      ).catch((err: unknown) => {
-        const message = err instanceof Error ? err.message : String(err);
-        error(message);
-        process.exit(1);
-      });
+      );
       break;
 
     case "config":
@@ -103,6 +114,29 @@ export function run(argv: string[]): void {
         positionals[1],
         positionals[2],
         positionals.slice(3).join(" ")
+      );
+      break;
+
+    case "publish":
+      await publish(
+        positionals[1],
+        {
+          dryRun: Boolean(values["dry-run"]),
+          force: Boolean(values.force),
+          all: Boolean(values.all),
+          status: values.status as string | undefined,
+        },
+        vaultFlag
+      );
+      break;
+
+    case "pull":
+      await pull(
+        positionals[1],
+        {
+          dryRun: Boolean(values["dry-run"]),
+        },
+        vaultFlag
       );
       break;
 
