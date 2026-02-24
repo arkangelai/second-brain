@@ -104,6 +104,5 @@ export function updatePostMetadata(content: string, updates: Record<string, stri
     lines.splice(dividerIndex, 0, ...toInsert);
   }
 
-  const rebuilt = lines.join("\n");
-  return content.endsWith("\n") ? `${rebuilt}\n` : rebuilt;
+  return lines.join("\n");
 }
