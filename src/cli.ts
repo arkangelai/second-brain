@@ -8,11 +8,12 @@ import { create } from "./commands/create.ts";
 import { draft } from "./commands/draft.ts";
 import { publish } from "./commands/publish.ts";
 import { pull } from "./commands/pull.ts";
+import { configCmd } from "./commands/config-cmd.ts";
 
 const VERSION = "0.1.0";
 
 const HELP = `
-  ${bold("second-brain")} — AI-native knowledge management CLI
+  ${bold("second-brain")} - AI-native knowledge management CLI
 
   ${bold("Usage:")}
     second-brain <command> [options]
@@ -30,10 +31,12 @@ const HELP = `
     publish setup              Guided Notion integration setup
     pull                       Pull Notion metrics into published local posts
     pull "file.md"             Pull metrics for a specific post
+    config <set|get> ...       Manage local second-brain config
 
   ${bold("Options:")}
     --vault <path>             Override vault path
-    --agent <name>             Agent for draft: claude, cursor, codex
+    --agent <name>             Agent for draft: claude, cursor, codex, gateway
+    --model <id>               Model id for gateway draft requests
     --dry-run                  Preview publish/pull actions without writing
     --force                    Re-publish even when hash matches
     --all                      Publish all pipeline posts regardless of status
@@ -51,6 +54,7 @@ export async function run(argv: string[]): Promise<void> {
     options: {
       vault: { type: "string" },
       agent: { type: "string" },
+      model: { type: "string" },
       status: { type: "string" },
       "dry-run": { type: "boolean" },
       force: { type: "boolean" },
@@ -97,10 +101,19 @@ export async function run(argv: string[]): Promise<void> {
       break;
 
     case "draft":
-      draft(
+      await draft(
         positionals.slice(1).join(" "),
         values.agent as string | undefined,
-        vaultFlag
+        vaultFlag,
+        values.model as string | undefined
+      );
+      break;
+
+    case "config":
+      configCmd(
+        positionals[1],
+        positionals[2],
+        positionals.slice(3).join(" ")
       );
       break;
 

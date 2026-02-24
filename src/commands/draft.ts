@@ -1,5 +1,6 @@
-import { existsSync, readFileSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
+import { spawnSync } from "bun";
 import {
   log,
   success,
@@ -11,16 +12,27 @@ import {
   requireQmd,
   exec,
   execLive,
-  checkCommand,
+  slugify,
 } from "../utils.ts";
-import { resolveVaultPath } from "../config.ts";
+import {
+  resolveVaultPath,
+  resolveApiKey,
+  resolveModel,
+} from "../config.ts";
+import { streamGatewayResponse } from "../gateway.ts";
 
-type Agent = "claude" | "cursor" | "codex";
+type Agent = "claude" | "cursor" | "codex" | "gateway";
+
+function commandExists(name: string): boolean {
+  const result = spawnSync(["which", name], { stdout: "ignore", stderr: "ignore" });
+  return result.exitCode === 0;
+}
 
 function detectAgent(): Agent | null {
-  if (checkCommand("claude", "")) return "claude";
-  if (checkCommand("cursor", "")) return "cursor";
-  if (checkCommand("codex", "")) return "codex";
+  if (commandExists("claude")) return "claude";
+  if (commandExists("cursor")) return "cursor";
+  if (commandExists("codex")) return "codex";
+  if (resolveApiKey()) return "gateway";
   return null;
 }
 
@@ -29,15 +41,16 @@ function readIfExists(path: string): string {
   return readFileSync(path, "utf-8");
 }
 
-export function draft(
+export async function draft(
   topic: string | undefined,
   agentFlag?: string,
-  vaultFlag?: string
-): void {
+  vaultFlag?: string,
+  modelFlag?: string
+): Promise<void> {
   if (!topic) {
     error("Missing topic.");
     log(`Usage: ${dim('second-brain draft "your topic"')}`);
-    log(`       ${dim('second-brain draft "leadership" --agent cursor')}`);
+    log(`       ${dim('second-brain draft "leadership" --agent gateway --model deepinfra/deepseek-v3.2')}`);
     process.exit(1);
   }
 
@@ -130,8 +143,8 @@ Important: Write in the voice described in the voice profile. If no voice profil
   let agent: Agent | null = null;
 
   if (agentFlag) {
-    if (!["claude", "cursor", "codex"].includes(agentFlag)) {
-      error(`Unknown agent: ${agentFlag}. Use: claude, cursor, or codex`);
+    if (!["claude", "cursor", "codex", "gateway"].includes(agentFlag)) {
+      error(`Unknown agent: ${agentFlag}. Use: claude, cursor, codex, or gateway`);
       process.exit(1);
     }
     agent = agentFlag as Agent;
@@ -144,11 +157,23 @@ Important: Write in the voice described in the voice profile. If no voice profil
     const promptPath = join(vaultPath, ".draft-prompt.md");
     writeFileSync(promptPath, prompt);
     console.log();
-    warn("No supported agent found (claude, cursor, codex).");
+    warn("No supported agent found (claude, cursor, codex, gateway).");
     success(`Prompt saved to: ${bold(promptPath)}`);
-    log("Open this file and paste its contents into your preferred AI agent.");
+    log("Install an agent CLI or configure gateway with:");
+    log(`  ${dim('second-brain config set apiKey "<key>"')}`);
     console.log();
     return;
+  }
+
+  if (agent !== "gateway" && !commandExists(agent)) {
+    error(`${agent} is not installed or not in PATH.`);
+    process.exit(1);
+  }
+
+  if (agent === "gateway" && !resolveApiKey()) {
+    error("Gateway selected but no API key found.");
+    log(`Set one with ${dim('second-brain config set apiKey "<key>"')} or AI_GATEWAY_API_KEY.`);
+    process.exit(1);
   }
 
   log(`Using agent: ${bold(agent)}`);
@@ -186,6 +211,37 @@ Important: Write in the voice described in the voice profile. If no voice profil
       console.log();
       const exitCode = execLive(["codex", prompt]);
       process.exit(exitCode);
+      break;
+    }
+
+    case "gateway": {
+      const apiKey = resolveApiKey();
+      if (!apiKey) {
+        error("No API key configured for gateway.");
+        log(`Set one with ${dim('second-brain config set apiKey "<key>"')} or AI_GATEWAY_API_KEY.`);
+        process.exit(1);
+      }
+
+      const model = resolveModel(modelFlag);
+      const pipelineDir = join(vaultPath, "03_creating", "pipeline");
+      const filePath = join(pipelineDir, `${slugify(topic)}.md`);
+      if (existsSync(filePath)) {
+        error(`File already exists: ${filePath}`);
+        process.exit(1);
+      }
+
+      log(`Model: ${dim(model)}`);
+      log("Generating draft via Vercel AI Gateway...");
+      console.log();
+
+      const output = await streamGatewayResponse(prompt, model, apiKey);
+
+      console.log();
+      mkdirSync(pipelineDir, { recursive: true });
+      writeFileSync(filePath, output.endsWith("\n") ? output : `${output}\n`);
+
+      success(`Draft saved to: ${bold(filePath)}`);
+      console.log();
       break;
     }
   }

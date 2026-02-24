@@ -5,9 +5,12 @@ import { homedir } from "os";
 const CONFIG_DIR = join(homedir(), ".config", "second-brain");
 const CONFIG_FILE = join(CONFIG_DIR, "config.json");
 const DEFAULT_VAULT = join(homedir(), "Documents", "Second_Brain");
+const DEFAULT_MODEL = "deepinfra/deepseek-v3.2";
 
 export interface Config {
-  vaultPath: string;
+  vaultPath?: string;
+  aiGatewayApiKey?: string;
+  defaultModel?: string;
   integrations?: {
     notion?: NotionConfig;
   };
@@ -36,6 +39,10 @@ export interface BodyMapping {
   }>;
 }
 
+export interface ResolvedConfig extends Omit<Config, "vaultPath"> {
+  vaultPath: string;
+}
+
 export const DEFAULT_NOTION_BODY_MAP: BodyMapping = {
   sections: [
     { markdownHeading: "Core Idea", notionHeading: "Idea", headingLevel: 2 },
@@ -44,15 +51,49 @@ export const DEFAULT_NOTION_BODY_MAP: BodyMapping = {
   ],
 };
 
-function readStoredConfig(): Partial<Config> {
+function cleanString(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed || undefined;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function readStoredConfig(): Config {
   if (!existsSync(CONFIG_FILE)) return {};
 
   try {
-    return JSON.parse(readFileSync(CONFIG_FILE, "utf-8")) as Partial<Config>;
+    const raw = JSON.parse(readFileSync(CONFIG_FILE, "utf-8")) as
+      | Record<string, unknown>
+      | null;
+
+    if (!raw || typeof raw !== "object") return {};
+
+    const config: Config = {};
+
+    const vaultPath = cleanString(raw.vaultPath);
+    const aiGatewayApiKey = cleanString(raw.aiGatewayApiKey);
+    const defaultModel = cleanString(raw.defaultModel);
+
+    if (vaultPath) config.vaultPath = vaultPath;
+    if (aiGatewayApiKey) config.aiGatewayApiKey = aiGatewayApiKey;
+    if (defaultModel) config.defaultModel = defaultModel;
+
+    if (isPlainObject(raw.integrations)) {
+      config.integrations = raw.integrations as Config["integrations"];
+    }
+
+    return config;
   } catch {
     // ignore malformed config
     return {};
   }
+}
+
+export function loadConfig(): Config {
+  return readStoredConfig();
 }
 
 /**
@@ -73,7 +114,7 @@ export function resolveEnvValue(value?: string): string {
  * 3. ~/.config/second-brain/config.json -> vaultPath
  * 4. ~/Documents/Second_Brain
  */
-export function resolveConfig(flagValue?: string): Config {
+export function resolveConfig(flagValue?: string): ResolvedConfig {
   const stored = readStoredConfig();
 
   const envPath = process.env.SECOND_BRAIN_PATH;
@@ -88,8 +129,9 @@ export function resolveConfig(flagValue?: string): Config {
     : undefined;
 
   return {
+    ...stored,
     vaultPath,
-    integrations: notion ? { notion } : undefined,
+    integrations: notion ? { notion } : stored.integrations,
   };
 }
 
@@ -98,10 +140,6 @@ export function resolveConfig(flagValue?: string): Config {
  */
 export function resolveVaultPath(flagValue?: string): string {
   return resolveConfig(flagValue).vaultPath;
-}
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function deepMerge<T extends object>(
@@ -135,12 +173,25 @@ export function saveConfig(configOrVaultPath: Partial<Config> | string): void {
 
   const merged = deepMerge<Config>(stored, patch) as Config;
 
-  if (!merged.vaultPath) {
-    merged.vaultPath = DEFAULT_VAULT;
-  }
-
   mkdirSync(CONFIG_DIR, { recursive: true });
   writeFileSync(CONFIG_FILE, JSON.stringify(merged, null, 2) + "\n");
+}
+
+export function resolveApiKey(): string | undefined {
+  const envKey = cleanString(process.env.AI_GATEWAY_API_KEY);
+  if (envKey) return envKey;
+
+  return loadConfig().aiGatewayApiKey;
+}
+
+export function resolveModel(flagValue?: string): string {
+  const flagModel = cleanString(flagValue);
+  if (flagModel) return flagModel;
+
+  const configModel = loadConfig().defaultModel;
+  if (configModel) return configModel;
+
+  return DEFAULT_MODEL;
 }
 
 export function getPackageRoot(): string {
