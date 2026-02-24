@@ -346,12 +346,22 @@ async function archiveAllChildren(client: Client, pageId: string): Promise<void>
     cursor = response.next_cursor;
   }
 
+  const failures: string[] = [];
   for (const blockId of blocksToArchive) {
-    await callNotion(() =>
-      client.blocks.update({
-        block_id: blockId,
-        archived: true,
-      } as any)
+    try {
+      await callNotion(() =>
+        client.blocks.update({
+          block_id: blockId,
+          archived: true,
+        } as any)
+      );
+    } catch (err) {
+      failures.push(blockId);
+    }
+  }
+  if (failures.length > 0) {
+    throw new Error(
+      `Failed to archive ${failures.length} block(s): ${failures.join(", ")}`
     );
   }
 }
