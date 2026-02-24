@@ -46,7 +46,8 @@ interface PublishSummary {
   moved: number;
 }
 
-function sha256(content: string): string {
+/** @internal */
+export function sha256(content: string): string {
   const hasher = new Bun.CryptoHasher("sha256");
   hasher.update(content);
   return hasher.digest("hex");
@@ -67,15 +68,18 @@ function listMarkdownFiles(dir: string): string[] {
   return files.sort();
 }
 
-function normalizeStatus(value: string | undefined): string {
+/** @internal */
+export function normalizeStatus(value: string | undefined): string {
   return (value || "").trim().toLowerCase();
 }
 
-function findFilenameProperty(config: NotionConfig): string {
+/** @internal */
+export function findFilenameProperty(config: NotionConfig): string {
   return config.propertyMap.find((item) => item.source === "filename")?.notionProperty || "Filename";
 }
 
-function findHashProperty(config: NotionConfig): string | undefined {
+/** @internal */
+export function findHashProperty(config: NotionConfig): string | undefined {
   return config.propertyMap.find((item) => item.source === "hash")?.notionProperty;
 }
 
@@ -100,7 +104,8 @@ function resolveTargetFile(vaultPath: string, fileArg: string): string | null {
   return null;
 }
 
-function toUuid(value: string): string {
+/** @internal */
+export function toUuid(value: string): string {
   const compact = value.replace(/-/g, "");
   if (!/^[0-9a-fA-F]{32}$/.test(compact)) {
     return value;
@@ -115,7 +120,8 @@ function toUuid(value: string): string {
   ].join("-");
 }
 
-function extractDatabaseId(input: string): string | null {
+/** @internal */
+export function extractDatabaseId(input: string): string | null {
   const trimmed = input.trim();
   if (!trimmed) return null;
 
@@ -130,11 +136,13 @@ function extractDatabaseId(input: string): string | null {
   return toUuid(match[1]);
 }
 
-function normalizeName(value: string): string {
+/** @internal */
+export function normalizeName(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
-function schemaTypeToMappingType(type: string): PropertyMapping["notionType"] | null {
+/** @internal */
+export function schemaTypeToMappingType(type: string): PropertyMapping["notionType"] | null {
   if (type === "title") return "title";
   if (type === "select") return "select";
   if (type === "rich_text") return "rich_text";
@@ -144,7 +152,8 @@ function schemaTypeToMappingType(type: string): PropertyMapping["notionType"] | 
   return null;
 }
 
-function inferMappingFromProperty(
+/** @internal */
+export function inferMappingFromProperty(
   notionProperty: string,
   notionType: PropertyMapping["notionType"]
 ): Omit<PropertyMapping, "notionProperty" | "notionType"> | null {
@@ -172,7 +181,8 @@ function inferMappingFromProperty(
   return null;
 }
 
-function autoGeneratePropertyMap(
+/** @internal */
+export function autoGeneratePropertyMap(
   schema: Record<string, { type: string }>
 ): PropertyMapping[] {
   const map: PropertyMapping[] = [];
@@ -314,7 +324,8 @@ function moveToPublished(vaultPath: string, filePath: string): void {
   renameSync(filePath, destination);
 }
 
-function shouldIncludePost(
+/** @internal */
+export function shouldIncludePost(
   statusFilter: string,
   postStatus: string,
   options: PublishOptions,

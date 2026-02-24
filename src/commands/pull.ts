@@ -42,7 +42,8 @@ function resolvePublishedFile(vaultPath: string, fileArg: string): string | null
   return null;
 }
 
-function buildMetricsSection(entries: Record<string, string>): string {
+/** @internal */
+export function buildMetricsSection(entries: Record<string, string>): string {
   const lines = ["## Metrics", ""];
 
   for (const [key, value] of Object.entries(entries)) {
@@ -52,7 +53,8 @@ function buildMetricsSection(entries: Record<string, string>): string {
   return lines.join("\n");
 }
 
-function upsertMetricsSection(content: string, entries: Record<string, string>): string {
+/** @internal */
+export function upsertMetricsSection(content: string, entries: Record<string, string>): string {
   if (Object.keys(entries).length === 0) {
     return content;
   }

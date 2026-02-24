@@ -27,7 +27,8 @@ function plainText(content: string) {
   return [{ type: "text", text: { content } }];
 }
 
-function splitText(input: string): string[] {
+/** @internal */
+export function splitText(input: string): string[] {
   const value = input.trim();
   if (!value) return [];
 
@@ -39,7 +40,8 @@ function splitText(input: string): string[] {
   return chunks;
 }
 
-function sectionToBlocks(heading: string, level: 2 | 3, body: string): Record<string, unknown>[] {
+/** @internal */
+export function sectionToBlocks(heading: string, level: 2 | 3, body: string): Record<string, unknown>[] {
   const headingType = level === 2 ? "heading_2" : "heading_3";
   const blocks: Record<string, unknown>[] = [
     {
@@ -75,11 +77,13 @@ function sectionToBlocks(heading: string, level: 2 | 3, body: string): Record<st
   return blocks;
 }
 
-function normalizeHeading(value: string): string {
+/** @internal */
+export function normalizeHeading(value: string): string {
   return value.trim().toLowerCase();
 }
 
-function toPropertyValue(
+/** @internal */
+export function toPropertyValue(
   mapping: PropertyMapping,
   value: string | undefined
 ): Record<string, unknown> {
@@ -108,7 +112,8 @@ function toPropertyValue(
   }
 }
 
-function resolveMappingValue(
+/** @internal */
+export function resolveMappingValue(
   post: ParsedPost,
   mapping: PropertyMapping,
   filename: string,
@@ -192,7 +197,8 @@ export function buildBlocks(
   return blocks;
 }
 
-function readPropertyValue(property: any): string {
+/** @internal */
+export function readPropertyValue(property: any): string {
   if (!property || typeof property !== "object") return "";
 
   switch (property.type) {
