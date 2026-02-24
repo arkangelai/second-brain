@@ -75,6 +75,10 @@ function sectionToBlocks(heading: string, level: 2 | 3, body: string): Record<st
   return blocks;
 }
 
+function normalizeHeading(value: string): string {
+  return value.trim().toLowerCase();
+}
+
 function toPropertyValue(
   mapping: PropertyMapping,
   value: string | undefined
@@ -171,6 +175,7 @@ export function buildBlocks(
 ): Record<string, unknown>[] {
   const bodyMap = config.bodyMap || DEFAULT_NOTION_BODY_MAP;
   const blocks: Record<string, unknown>[] = [];
+  const mappedHeadings = new Set(bodyMap.sections.map((section) => normalizeHeading(section.markdownHeading)));
 
   for (const section of bodyMap.sections) {
     const text = post.sections[section.markdownHeading];
@@ -178,12 +183,9 @@ export function buildBlocks(
     blocks.push(...sectionToBlocks(section.notionHeading, section.headingLevel, text));
   }
 
-  if (blocks.length > 0) {
-    return blocks;
-  }
-
   for (const [heading, text] of Object.entries(post.sections)) {
     if (!text.trim()) continue;
+    if (mappedHeadings.has(normalizeHeading(heading))) continue;
     blocks.push(...sectionToBlocks(heading, 2, text));
   }
 

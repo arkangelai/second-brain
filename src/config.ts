@@ -39,8 +39,8 @@ export interface BodyMapping {
 export const DEFAULT_NOTION_BODY_MAP: BodyMapping = {
   sections: [
     { markdownHeading: "Core Idea", notionHeading: "Idea", headingLevel: 2 },
-    { markdownHeading: "Source notes", notionHeading: "Sources", headingLevel: 2 },
     { markdownHeading: "Draft", notionHeading: "Draft", headingLevel: 2 },
+    { markdownHeading: "Notes", notionHeading: "Notes", headingLevel: 2 },
   ],
 };
 
