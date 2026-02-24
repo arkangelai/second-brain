@@ -1,4 +1,4 @@
-import { spawnSync, type SpawnSyncReturns } from "bun";
+import { spawnSync } from "bun";
 
 // ─── Colors ──────────────────────────────────────────────────────────────────
 

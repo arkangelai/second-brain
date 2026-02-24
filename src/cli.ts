@@ -6,6 +6,7 @@ import { status } from "./commands/status.ts";
 import { search } from "./commands/search.ts";
 import { create } from "./commands/create.ts";
 import { draft } from "./commands/draft.ts";
+import { configCmd } from "./commands/config-cmd.ts";
 
 const VERSION = "0.1.0";
 
@@ -23,10 +24,12 @@ const HELP = `
     create note "title"        Scaffold a new note
     create post "title"        Scaffold a new pipeline post
     draft "topic"              Search vault, assemble prompt, launch agent
+    config <set|get> ...       Manage local second-brain config
 
   ${bold("Options:")}
     --vault <path>             Override vault path
-    --agent <name>             Agent for draft: claude, cursor, codex
+    --agent <name>             Agent for draft: claude, cursor, codex, gateway
+    --model <id>               Model id for gateway draft requests
     --version, -v              Show version
     --help, -h                 Show this help
 
@@ -40,6 +43,7 @@ export function run(argv: string[]): void {
     options: {
       vault: { type: "string" },
       agent: { type: "string" },
+      model: { type: "string" },
       version: { type: "boolean", short: "v" },
       help: { type: "boolean", short: "h" },
     },
@@ -85,7 +89,20 @@ export function run(argv: string[]): void {
       draft(
         positionals.slice(1).join(" "),
         values.agent as string | undefined,
-        vaultFlag
+        vaultFlag,
+        values.model as string | undefined
+      ).catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err);
+        error(message);
+        process.exit(1);
+      });
+      break;
+
+    case "config":
+      configCmd(
+        positionals[1],
+        positionals[2],
+        positionals.slice(3).join(" ")
       );
       break;
 
