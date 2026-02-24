@@ -61,7 +61,7 @@ function upsertMetricsSection(content: string, entries: Record<string, string>):
 
   const regex = /\n## Metrics\n[\s\S]*?(?=\n##\s+|$)/m;
   if (regex.test(content)) {
-    return content.replace(regex, `\n${section}`) + (content.endsWith("\n") ? "" : "\n");
+    return content.replace(regex, `\n${section}`);
   }
 
   const normalized = content.endsWith("\n") ? content : `${content}\n`;

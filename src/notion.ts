@@ -325,6 +325,7 @@ export async function createPage(
 }
 
 async function archiveAllChildren(client: Client, pageId: string): Promise<void> {
+  const blocksToArchive: string[] = [];
   let cursor: string | undefined;
 
   while (true) {
@@ -336,20 +337,29 @@ async function archiveAllChildren(client: Client, pageId: string): Promise<void>
       })
     );
 
-    for (const block of response.results) {
-      await callNotion(() =>
-        client.blocks.update({
-          block_id: block.id,
-          archived: true,
-        } as any)
-      );
-    }
+    blocksToArchive.push(...response.results.map((block: any) => block.id));
 
     if (!response.has_more || !response.next_cursor) {
       break;
     }
 
     cursor = response.next_cursor;
+  }
+
+  // Archive in parallel batches
+  const batchSize = 10;
+  for (let i = 0; i < blocksToArchive.length; i += batchSize) {
+    const batch = blocksToArchive.slice(i, i + batchSize);
+    await Promise.all(
+      batch.map((blockId) =>
+        callNotion(() =>
+          client.blocks.update({
+            block_id: blockId,
+            archived: true,
+          } as any)
+        )
+      )
+    );
   }
 }
 
