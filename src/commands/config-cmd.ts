@@ -8,6 +8,12 @@ function usage(): void {
   log(`       ${dim("second-brain config get model")}`);
 }
 
+function normalize(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  return trimmed || undefined;
+}
+
 function maskApiKey(key: string): string {
   const trimmed = key.trim();
   if (trimmed.length <= 8) return "*".repeat(trimmed.length);
@@ -32,20 +38,21 @@ export function configCmd(
       process.exit(1);
     }
 
-    if (!value) {
+    const normalized = normalize(value);
+    if (!normalized) {
       error("Missing value.");
       usage();
       process.exit(1);
     }
 
     if (key === "apiKey") {
-      saveConfig({ aiGatewayApiKey: value.trim() });
+      saveConfig({ aiGatewayApiKey: normalized });
       success("AI Gateway API key saved");
       return;
     }
 
-    saveConfig({ defaultModel: value.trim() });
-    success(`Default model saved: ${bold(value.trim())}`);
+    saveConfig({ defaultModel: normalized });
+    success(`Default model saved: ${bold(normalized)}`);
     return;
   }
 
@@ -58,16 +65,17 @@ export function configCmd(
   const config = loadConfig();
 
   if (key === "apiKey") {
-    const apiKey = config.aiGatewayApiKey?.trim();
+    const apiKey = config.aiGatewayApiKey;
     if (!apiKey) {
       warn("No API key set in config.");
+      log(`Configure it with ${dim('second-brain config set apiKey "<key>"')}`);
       return;
     }
     log(`AI Gateway API key: ${bold(maskApiKey(apiKey))}`);
     return;
   }
 
-  const configuredModel = config.defaultModel?.trim();
+  const configuredModel = config.defaultModel;
   if (configuredModel) {
     log(`Default model: ${bold(configuredModel)}`);
     return;

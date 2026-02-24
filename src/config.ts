@@ -13,15 +13,31 @@ export interface Config {
   defaultModel?: string;
 }
 
+function cleanString(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed || undefined;
+}
+
 export function loadConfig(): Config {
   if (!existsSync(CONFIG_FILE)) return {};
 
   try {
     const raw = JSON.parse(readFileSync(CONFIG_FILE, "utf-8")) as
-      | Config
+      | Record<string, unknown>
       | null;
     if (!raw || typeof raw !== "object") return {};
-    return raw;
+
+    const config: Config = {};
+    const vaultPath = cleanString(raw.vaultPath);
+    const aiGatewayApiKey = cleanString(raw.aiGatewayApiKey);
+    const defaultModel = cleanString(raw.defaultModel);
+
+    if (vaultPath) config.vaultPath = vaultPath;
+    if (aiGatewayApiKey) config.aiGatewayApiKey = aiGatewayApiKey;
+    if (defaultModel) config.defaultModel = defaultModel;
+
+    return config;
   } catch {
     // ignore malformed config
     return {};
@@ -54,18 +70,17 @@ export function saveConfig(updates: Partial<Config>): void {
 }
 
 export function resolveApiKey(): string | undefined {
-  const envKey = process.env.AI_GATEWAY_API_KEY?.trim();
+  const envKey = cleanString(process.env.AI_GATEWAY_API_KEY);
   if (envKey) return envKey;
 
-  const key = loadConfig().aiGatewayApiKey?.trim();
-  return key || undefined;
+  return loadConfig().aiGatewayApiKey;
 }
 
 export function resolveModel(flagValue?: string): string {
-  const flagModel = flagValue?.trim();
+  const flagModel = cleanString(flagValue);
   if (flagModel) return flagModel;
 
-  const configModel = loadConfig().defaultModel?.trim();
+  const configModel = loadConfig().defaultModel;
   if (configModel) return configModel;
 
   return DEFAULT_MODEL;

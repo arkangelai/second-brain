@@ -218,6 +218,7 @@ Important: Write in the voice described in the voice profile. If no voice profil
       const apiKey = resolveApiKey();
       if (!apiKey) {
         error("No API key configured for gateway.");
+        log(`Set one with ${dim('second-brain config set apiKey "<key>"')} or AI_GATEWAY_API_KEY.`);
         process.exit(1);
       }
 
