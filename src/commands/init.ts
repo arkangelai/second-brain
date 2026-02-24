@@ -95,7 +95,7 @@ export function init(vaultFlag?: string): void {
   }
 
   // ── Save config ────────────────────────────────────────────────────────
-  saveConfig(vaultPath);
+  saveConfig({ vaultPath });
   success("Config saved");
 
   // ── Done ───────────────────────────────────────────────────────────────

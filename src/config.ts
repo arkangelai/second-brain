@@ -1,13 +1,31 @@
-import { existsSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 
 const CONFIG_DIR = join(homedir(), ".config", "second-brain");
 const CONFIG_FILE = join(CONFIG_DIR, "config.json");
 const DEFAULT_VAULT = join(homedir(), "Documents", "Second_Brain");
+const DEFAULT_MODEL = "deepinfra/deepseek-v3.2";
 
-interface Config {
-  vaultPath: string;
+export interface Config {
+  vaultPath?: string;
+  aiGatewayApiKey?: string;
+  defaultModel?: string;
+}
+
+export function loadConfig(): Config {
+  if (!existsSync(CONFIG_FILE)) return {};
+
+  try {
+    const raw = JSON.parse(readFileSync(CONFIG_FILE, "utf-8")) as
+      | Config
+      | null;
+    if (!raw || typeof raw !== "object") return {};
+    return raw;
+  } catch {
+    // ignore malformed config
+    return {};
+  }
 }
 
 /**
@@ -23,25 +41,34 @@ export function resolveVaultPath(flagValue?: string): string {
   const envPath = process.env.SECOND_BRAIN_PATH;
   if (envPath) return resolvePath(envPath);
 
-  if (existsSync(CONFIG_FILE)) {
-    try {
-      const raw = JSON.parse(
-        require("fs").readFileSync(CONFIG_FILE, "utf-8")
-      ) as Config;
-      if (raw.vaultPath) return resolvePath(raw.vaultPath);
-    } catch {
-      // ignore malformed config
-    }
-  }
+  const config = loadConfig();
+  if (config.vaultPath) return resolvePath(config.vaultPath);
 
   return DEFAULT_VAULT;
 }
 
-export function saveConfig(vaultPath: string): void {
-  const { mkdirSync, writeFileSync } = require("fs") as typeof import("fs");
+export function saveConfig(updates: Partial<Config>): void {
   mkdirSync(CONFIG_DIR, { recursive: true });
-  const config: Config = { vaultPath };
+  const config: Config = { ...loadConfig(), ...updates };
   writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2) + "\n");
+}
+
+export function resolveApiKey(): string | undefined {
+  const envKey = process.env.AI_GATEWAY_API_KEY?.trim();
+  if (envKey) return envKey;
+
+  const key = loadConfig().aiGatewayApiKey?.trim();
+  return key || undefined;
+}
+
+export function resolveModel(flagValue?: string): string {
+  const flagModel = flagValue?.trim();
+  if (flagModel) return flagModel;
+
+  const configModel = loadConfig().defaultModel?.trim();
+  if (configModel) return configModel;
+
+  return DEFAULT_MODEL;
 }
 
 export function getPackageRoot(): string {

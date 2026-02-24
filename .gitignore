@@ -16,6 +16,9 @@ dist/
 # Draft prompts
 .draft-prompt.md
 
+# Second Brain config (contains API keys)
+.config/
+
 # Editor
 *.swp
 *.swo
