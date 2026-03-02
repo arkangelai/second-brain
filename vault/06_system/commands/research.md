@@ -30,13 +30,15 @@ Search the web for 4-6 high-quality sources on the topic. Prioritize:
 
 ### 3. Summarize each source
 
-For each promising URL from the search results:
+Use the `summarize` CLI if available (`brew install summarize` or see [github.com/stefanpejcic/summarize](https://github.com/stefanpejcic/summarize)). If it's not installed, fetch and summarize the URL content directly using your built-in web/file reading capabilities.
+
+**With `summarize` CLI (preferred):**
 
 ```bash
 summarize "<url>" --length medium --plain
 ```
 
-If `summarize` fails on a URL, try `--extract` or fetch the URL directly as fallback. Skip sources that can't be accessed.
+**Without `summarize`:** Fetch each URL directly (web fetch, curl, etc.), read the content, and produce your own summary. Skip sources that can't be accessed.
 
 ### 4. Generate filename
 

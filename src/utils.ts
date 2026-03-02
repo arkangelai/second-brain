@@ -91,6 +91,52 @@ export function requireQmd(): void {
   requireCommand("qmd", "Install QMD: bun install -g @tobilu/qmd");
 }
 
+// ─── Plugin install ─────────────────────────────────────────────────────────
+
+import { mkdirSync, readFileSync } from "fs";
+import { join } from "path";
+import {
+  CLAUDE_SIDEBAR_VERSION,
+  CLAUDE_SIDEBAR_BASE_URL,
+  CLAUDE_SIDEBAR_FILES,
+} from "./config.ts";
+
+export function installClaudeSidebar(vaultPath: string): boolean {
+  const pluginDir = join(vaultPath, ".obsidian", "plugins", "claude-sidebar");
+  mkdirSync(pluginDir, { recursive: true });
+
+  let ok = true;
+  for (const file of CLAUDE_SIDEBAR_FILES) {
+    const dl = exec([
+      "curl", "-fsSL",
+      "-o", join(pluginDir, file),
+      `${CLAUDE_SIDEBAR_BASE_URL}/${file}`,
+    ]);
+    if (!dl.ok) {
+      ok = false;
+      warn(`Failed to download ${file}`);
+    }
+  }
+
+  // Validate manifest to catch corrupted or tampered downloads
+  if (ok) {
+    try {
+      const manifest = JSON.parse(
+        readFileSync(join(pluginDir, "manifest.json"), "utf-8")
+      );
+      if (manifest.id !== "claude-sidebar") {
+        warn("Plugin manifest validation failed — unexpected plugin id");
+        ok = false;
+      }
+    } catch {
+      warn("Plugin manifest validation failed — could not parse manifest.json");
+      ok = false;
+    }
+  }
+
+  return ok;
+}
+
 // ─── Slugify ─────────────────────────────────────────────────────────────────
 
 export function slugify(text: string): string {

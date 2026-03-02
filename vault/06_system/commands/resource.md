@@ -21,7 +21,9 @@ The user can override the folder by saying "in <folder>" in their input.
 
 ### 2. Summarize each URL
 
-For each URL, try the following fallback chain:
+Use the `summarize` CLI if available (`brew install summarize` or see [github.com/stefanpejcic/summarize](https://github.com/stefanpejcic/summarize)). If it's not installed, fetch and summarize the URL content directly using your built-in web/file reading capabilities.
+
+**With `summarize` CLI (preferred):**
 
 ```bash
 # Primary: plain text summary
@@ -34,7 +36,7 @@ summarize "<url>" --length <appropriate> --json
 summarize "<url>" --extract
 ```
 
-If all methods fail, try fetching the URL directly. Skip sources that can't be accessed.
+**Without `summarize`:** Fetch the URL content directly (web fetch, curl, etc.), read it, and produce your own summary. The output format should be the same either way.
 
 ### 3. Generate filename
 

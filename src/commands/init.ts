@@ -4,12 +4,12 @@ import {
   log,
   success,
   warn,
-  error,
   bold,
   dim,
   requireBun,
   checkCommand,
   exec,
+  installClaudeSidebar,
 } from "../utils.ts";
 import {
   resolveVaultPath,
@@ -17,8 +17,6 @@ import {
   getPackageRoot,
   VAULT_DIRS,
   CLAUDE_SIDEBAR_VERSION,
-  CLAUDE_SIDEBAR_BASE_URL,
-  CLAUDE_SIDEBAR_FILES,
 } from "../config.ts";
 import { copyTemplates } from "../templates.ts";
 
@@ -53,22 +51,7 @@ export function init(vaultFlag?: string): void {
 
   // ── Install Claude Sidebar plugin ─────────────────────────────────────
   log("Installing Claude Sidebar plugin...");
-  const pluginDir = join(vaultPath, ".obsidian", "plugins", "claude-sidebar");
-  mkdirSync(pluginDir, { recursive: true });
-
-  let pluginOk = true;
-  for (const file of CLAUDE_SIDEBAR_FILES) {
-    const dl = exec([
-      "curl", "-fsSL",
-      "-o", join(pluginDir, file),
-      `${CLAUDE_SIDEBAR_BASE_URL}/${file}`,
-    ]);
-    if (!dl.ok) {
-      pluginOk = false;
-      warn(`Failed to download ${file}`);
-    }
-  }
-  if (pluginOk) {
+  if (installClaudeSidebar(vaultPath)) {
     success(`Claude Sidebar v${CLAUDE_SIDEBAR_VERSION} installed`);
   } else {
     warn("Plugin install failed — see https://github.com/derek-larson14/obsidian-claude-sidebar");
