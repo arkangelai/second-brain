@@ -335,6 +335,7 @@ Your vault ships with 4 agent-agnostic commands — prompt files in `06_system/c
 | `/research` | Research a topic with web + vault, create a sourced note |
 | `/resource` | Ingest URL(s) into the vault as formatted notes |
 | `/therapy` | Organize a brain dump into structured, linked notes |
+| `/schedule` | Schedule ready pipeline posts to X/LinkedIn via Post-Bridge |
 
 ### Usage
 
@@ -369,6 +370,7 @@ Input: https://paulgraham.com/startupideas.html
 | You need fresh external info | `/research` — web + vault, creates a note |
 | You have a URL to save | `/resource` — summarize + ingest |
 | Your head is full of ideas | `/therapy` — brain dump → structured notes |
+| Ready posts need scheduling | `/schedule` — schedule to X/LinkedIn via Post-Bridge |
 
 ### Customizing commands
 
@@ -411,7 +413,8 @@ Second_Brain/
     │   ├── answer.md         # /answer — ask the vault
     │   ├── research.md       # /research — web + vault research
     │   ├── resource.md       # /resource — ingest URLs
-    │   └── therapy.md        # /therapy — brain dump → notes
+    │   ├── therapy.md        # /therapy — brain dump → notes
+    │   └── schedule.md       # /schedule — schedule posts to X/LinkedIn
     ├── content-engine/
     │   ├── voice-profile.md  # Your voice, audience, pillars, tone
     │   ├── structures.md     # Proven post formats with templates
@@ -970,6 +973,52 @@ second-brain draft "leadership lessons" --agent gateway
 second-brain draft "AI in healthcare" --agent gateway --model "deepinfra/deepseek-v3.2"
 ```
 
+### Post-Bridge (Social Media Scheduling)
+
+Schedule posts from your content pipeline directly to X and LinkedIn. Posts in `03_creating/pipeline/` with status `ready` are sent to the Post-Bridge API, which handles the actual publishing at the scheduled time.
+
+**What you need:**
+- A [Post-Bridge](https://post-bridge.com) account with connected social accounts
+- An API key from Post-Bridge
+
+**Safe setup (3 steps):**
+
+```bash
+# Step 1: Add your Post-Bridge API key to your shell environment.
+# Open ~/.zshrc (or ~/.bashrc) and add:
+export POST_BRIDGE_API_KEY="your_api_key_here"
+
+# Then reload your shell:
+source ~/.zshrc
+
+# Step 2: Install dependencies and discover your social accounts.
+cd tools/post-bridge && bun install
+bun run src/index.ts accounts
+
+# Step 3: Verify it worked.
+bun run src/index.ts list
+```
+
+**How it works:**
+- `/schedule` command (or `bun run schedule-week`) scans the pipeline for ready posts
+- Each post is scheduled to X, LinkedIn, or both based on its `Platform` field
+- Posts are scheduled one per weekday (Mon-Fri) at 08:00 COT by default
+- The pipeline file's `Publish date` field is updated automatically
+
+```bash
+# Schedule a single post
+bun --cwd tools/post-bridge run src/index.ts schedule my-post.md --date 2026-03-02
+
+# Auto-schedule all ready posts starting next Monday
+bun --cwd tools/post-bridge run src/index.ts schedule-week --start 2026-03-02
+
+# Check scheduled posts
+bun --cwd tools/post-bridge run src/index.ts list --status scheduled
+
+# Check publish results
+bun --cwd tools/post-bridge run src/index.ts results
+```
+
 ### Security Notes
 
 All integrations follow the same principle: **secrets live in your shell environment, not in files agents can read**.
@@ -978,6 +1027,7 @@ All integrations follow the same principle: **secrets live in your shell environ
 |--------|-----------|-----------|
 | `NOTION_API_TOKEN` | Shell environment (`~/.zshrc`) | `"$NOTION_API_TOKEN"` reference in config |
 | `AI_GATEWAY_API_KEY` | Shell environment or `config set apiKey` | Env var (preferred) or config file |
+| `POST_BRIDGE_API_KEY` | Shell environment (`~/.zshrc`) | Env var only (not stored in config) |
 
 The config file at `~/.config/second-brain/config.json` stores Notion auth as an environment variable reference string, not the raw token. The `config get apiKey` command masks the key (shows only first 4 and last 4 characters). This means you can safely let any AI agent read your vault and config without exposing credentials.
 
@@ -1024,6 +1074,7 @@ The config file at `~/.config/second-brain/config.json` stores Notion auth as an
 | Package manager | Bun |
 | Agent protocol | MCP (Model Context Protocol) |
 | Publishing | Notion API (`@notionhq/client`) — optional |
+| Scheduling | Post-Bridge API (`tools/post-bridge/`) — optional |
 | AI Gateway | Vercel AI Gateway (OpenAI-compatible) — optional |
 
 ---

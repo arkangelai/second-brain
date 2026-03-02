@@ -53,7 +53,7 @@ Second_Brain/
 ├── 04_published/          # Finished, published work.
 ├── 05_archive/            # Inactive content. Out of sight, not deleted.
 ├── 06_system/             # Templates, scripts, configuration.
-│   ├── commands/          # Agent command prompts (answer, research, resource, therapy)
+│   ├── commands/          # Agent command prompts (answer, research, resource, therapy, schedule)
 │   ├── content-engine/    # Voice profile, structures, learnings
 │   ├── templates/
 │   └── scripts/
@@ -183,6 +183,7 @@ The vault ships with ready-to-use command prompts in `06_system/commands/`. Thes
 | `/research` | Research a topic with web + vault, create a sourced note | `06_system/commands/research.md` |
 | `/resource` | Ingest URL(s) into the vault as formatted notes | `06_system/commands/resource.md` |
 | `/therapy` | Organize a brain dump into structured, linked notes | `06_system/commands/therapy.md` |
+| `/schedule` | Schedule ready pipeline posts to X/LinkedIn via Post-Bridge | `06_system/commands/schedule.md` |
 
 ### How to use
 
@@ -200,6 +201,7 @@ Topic: AI agents in healthcare
 - **Need fresh external info?** → `/research` (web + vault, creates a note)
 - **Have a URL to save?** → `/resource` (summarize + ingest)
 - **Head full of ideas?** → `/therapy` (brain dump → structured notes)
+- **Ready posts to publish?** → `/schedule` (schedule to X/LinkedIn via Post-Bridge)
 
 ---
 
