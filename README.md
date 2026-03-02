@@ -20,7 +20,9 @@ The stack:
 | **Reading** | [Obsidian](https://obsidian.md) | Visual navigation, `[[wiki links]]`, graph view |
 | **Search** | [QMD](https://github.com/tobi/qmd) | BM25 + vector + reranking — 100% local |
 | **Agent** | Any (Claude Code, Cursor, Codex, etc.) | Reads, searches, and creates from your vault |
+| **Sidebar** | [Claude Sidebar](https://github.com/derek-larson14/obsidian-claude-sidebar) | Claude Code terminal embedded in Obsidian |
 | **CLI** | `second-brain` | Setup, search, scaffold, and draft from the terminal |
+| **Publishing** | [Notion](https://notion.so) (optional) | Sync pipeline posts to a Notion database |
 
 ---
 
@@ -67,6 +69,83 @@ second-brain init
 2. Click "Open folder as vault"
 3. Select `~/Documents/Second_Brain`
 4. Done — you'll see wiki links, graph view, and full navigation
+
+### Activate Claude Sidebar
+
+The `init` command automatically installs the [Claude Sidebar](https://github.com/derek-larson14/obsidian-claude-sidebar) plugin into your vault. To activate it:
+
+1. Restart Obsidian (or reload: `Cmd+Shift+P` → "Reload app without saving")
+2. Go to **Settings → Community Plugins → enable "Claude Sidebar"**
+
+The plugin gives you a full Claude Code terminal right in your Obsidian sidebar — no need to switch between windows.
+
+**What you get:**
+- Embedded Claude Code terminal in Obsidian's sidebar panel
+- Multi-tab support — run multiple Claude instances simultaneously
+- Right-click any folder to launch Claude scoped to that directory
+- Send selected text or file paths directly to Claude
+- Drag-and-drop files onto the sidebar to reference them
+- Multi-backend support — switch between Claude Code, Codex, OpenCode, or Gemini CLI
+
+**Requirements:** [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code/overview) must be installed and authenticated. The plugin runs the CLI inside Obsidian — it doesn't call the API directly.
+
+### Your First Session
+
+Once Obsidian is open and Claude Sidebar is active, click the Claude icon in the sidebar to start a terminal. Here's a three-step walkthrough to get your vault loaded and generating content:
+
+#### Step 1 — Set up your voice profile
+
+Tell Claude about yourself so it can write in your voice. Paste this into the sidebar:
+
+```
+Read AGENTS.md to orient yourself, then open 06_system/content-engine/voice-profile.md.
+
+Interview me to fill it out: ask me about who I am, what I do, who my audience is,
+my content pillars, my tone, and paste in any example posts I share. Update the file
+with my answers as we go.
+```
+
+Claude will ask you questions about your background, audience, tone, and writing style, then fill in `voice-profile.md` for you.
+
+#### Step 2 — Feed your vault
+
+Your second brain is only as good as what's in it. Use the `/resource` command to import articles, YouTube videos, PDFs, or anything you've been thinking about:
+
+**Claude Code:**
+```
+/resource https://example.com/article-i-liked
+```
+
+**Any agent:**
+```
+Read 06_system/commands/resource.md and follow the instructions.
+Input: https://example.com/article-i-liked https://youtube.com/watch?v=video-id
+```
+
+You can feed it anything — book highlights, podcast episodes, blog posts, research papers. Each URL gets summarized and saved as a formatted note with wiki links to related content. The more you add, the richer the output when you generate content later.
+
+#### Step 3 — Generate your first content
+
+Now that your vault has a voice profile and some source material, try generating your first draft:
+
+```bash
+second-brain draft "a topic you care about"
+```
+
+Or use the vault commands directly in any agent:
+
+**Claude Code:**
+```
+/research AI agents in healthcare
+```
+
+**Any agent:**
+```
+Read 06_system/commands/research.md and follow the instructions.
+Topic: AI agents in healthcare
+```
+
+From here, review what the agent generated, edit in Obsidian, and iterate. The more notes and feedback you add to `learnings.md`, the better the output gets over time.
 
 ---
 
@@ -246,6 +325,61 @@ Priority order:
 
 ---
 
+## Vault Commands
+
+Your vault ships with 4 agent-agnostic commands — prompt files in `06_system/commands/` that any CLI agent can read and execute. Claude Code users also get `/slash` commands automatically.
+
+| Command | What it does |
+|---------|-------------|
+| `/answer` | Answer a question using **only** vault content — no web |
+| `/research` | Research a topic with web + vault, create a sourced note |
+| `/resource` | Ingest URL(s) into the vault as formatted notes |
+| `/therapy` | Organize a brain dump into structured, linked notes |
+| `/schedule` | Schedule ready pipeline posts to X/LinkedIn via Post-Bridge |
+
+### Usage
+
+**Claude Code** (slash commands work automatically):
+
+```
+/answer what is counter-positioning?
+/research AI agents in healthcare 2026
+/resource https://paulgraham.com/startupideas.html
+/therapy I've been thinking about three things: first, the way our product...
+```
+
+**Any other CLI agent** (Cursor, Codex, OpenCode, etc.):
+
+Tell the agent to read the prompt file and follow it:
+
+```
+Read 06_system/commands/answer.md and follow the instructions.
+Question: what is counter-positioning?
+```
+
+```
+Read 06_system/commands/resource.md and follow the instructions.
+Input: https://paulgraham.com/startupideas.html
+```
+
+### When to use which command
+
+| Situation | Command |
+|-----------|---------|
+| You know it's in the vault | `/answer` — vault-only search, no web |
+| You need fresh external info | `/research` — web + vault, creates a note |
+| You have a URL to save | `/resource` — summarize + ingest |
+| Your head is full of ideas | `/therapy` — brain dump → structured notes |
+| Ready posts need scheduling | `/schedule` — schedule to X/LinkedIn via Post-Bridge |
+
+### Customizing commands
+
+The prompt files live in `06_system/commands/`. Edit them to match your workflow — change the note formats, default folders, output language, or add new commands.
+
+To add a new command, create a new `.md` file in `06_system/commands/` with the prompt instructions. For Claude Code slash command support, also create a matching file in `.claude/commands/` with a `$ARGUMENTS` reference.
+
+---
+
 ## Vault Structure
 
 ```
@@ -270,10 +404,17 @@ Second_Brain/
 │       └── articles/         # Article summaries
 ├── 03_creating/              # Work in progress
 │   ├── drafts/               # General drafts
-│   └── pipeline/             # Content pipeline (idea → draft → ready)
+│   ├── pipeline/             # Content ready to publish
+│   └── scheduled/            # Posts scheduled for future publish
 ├── 04_published/             # Finished, published work
 ├── 05_archive/               # Inactive content (out of sight, not deleted)
 └── 06_system/                # Templates, scripts, configuration
+    ├── commands/             # Agent command prompts
+    │   ├── answer.md         # /answer — ask the vault
+    │   ├── research.md       # /research — web + vault research
+    │   ├── resource.md       # /resource — ingest URLs
+    │   ├── therapy.md        # /therapy — brain dump → notes
+    │   └── schedule.md       # /schedule — schedule posts to X/LinkedIn
     ├── content-engine/
     │   ├── voice-profile.md  # Your voice, audience, pillars, tone
     │   ├── structures.md     # Proven post formats with templates
@@ -653,13 +794,16 @@ Save all three in 03_creating/pipeline/.
 
 ### The Content Pipeline
 
-Each piece of content lives as a file in `03_creating/pipeline/` and moves through stages:
+Content moves through folders as it progresses:
 
 ```
-idea → draft → ready → published
+03_creating/drafts/      → work in progress, rough ideas
+03_creating/pipeline/    → ready to publish (status: ready)
+03_creating/scheduled/   → queued for a future date
+04_published/            → live, published content
 ```
 
-The pipeline file tracks everything:
+Each pipeline file tracks metadata as bold key-value pairs:
 
 ```markdown
 # Post Title
@@ -680,7 +824,7 @@ The actual post text.
 Revisions, alternatives, performance after publishing.
 ```
 
-When published, move the file to `04_published/` and log results in `learnings.md`.
+When you run `second-brain publish`, ready posts in `03_creating/pipeline/` are pushed to Notion and automatically moved to `04_published/`. After publishing, use `second-brain pull` to sync metrics back from Notion into your local files. Log results in `learnings.md` to improve future drafts.
 
 ### Why This Gets Better Over Time
 
@@ -760,6 +904,135 @@ qmd context add ~/Documents/Second_Brain/02_reference/sources/books "Book summar
 
 ---
 
+## Optional Integrations
+
+These are **entirely optional**. The vault works fully without them. Set them up when you're ready to publish content or use the AI gateway for drafting.
+
+### Notion (Publish & Pull)
+
+Sync your content pipeline to a Notion database. Posts in `03_creating/pipeline/` get pushed to Notion, and metrics from Notion get pulled back into your local files.
+
+**What you need:**
+- A [Notion integration](https://www.notion.so/my-integrations) with access to your content database
+- The integration token (starts with `secret_...`)
+
+**Safe setup (3 steps):**
+
+```bash
+# Step 1: Add your Notion token to your shell environment.
+# Open ~/.zshrc (or ~/.bashrc) in a text editor and add:
+export NOTION_API_TOKEN="secret_your_token_here"
+
+# Then reload your shell:
+source ~/.zshrc
+
+# Step 2: Run the guided setup (paste your database URL when prompted).
+second-brain publish setup
+
+# Step 3: Verify it worked.
+second-brain publish --dry-run
+```
+
+Your token is stored as an environment variable reference (`$NOTION_API_TOKEN`) in the config file — **the actual secret never touches the config**. This means your AI agents can read the config safely without seeing your credentials.
+
+**How it works:**
+- `second-brain publish` — pushes ready posts from `03_creating/pipeline/` to Notion, then moves them to `04_published/`
+- `second-brain publish --dry-run` — preview what would be published without writing
+- `second-brain pull` — syncs metrics and properties from Notion back into local markdown files
+- Files are tracked by SHA-256 hash, so unchanged files are skipped automatically
+
+See the [CLI Commands](#notion-integration-publish--pull) section above for all flags and options.
+
+### AI Gateway (Draft Without a CLI Agent)
+
+If you don't have Claude Code, Cursor, or Codex installed, you can still use `second-brain draft` via the AI Gateway — an OpenAI-compatible API endpoint that streams responses directly to your terminal.
+
+**What you need:**
+- An API key for the gateway (contact your team or provider)
+
+**Safe setup (2 steps):**
+
+```bash
+# Option A: Environment variable (recommended — never stored on disk)
+export AI_GATEWAY_API_KEY="your_api_key"
+
+# Option B: Store in config (masked when displayed)
+second-brain config set apiKey "your_api_key"
+
+# Optional: change the default model
+second-brain config set model "deepinfra/deepseek-v3.2"
+```
+
+**How it works:**
+- The gateway is auto-detected as the last fallback when no CLI agent is found but an API key is configured
+- Override explicitly with `--agent gateway`
+- Output streams to your terminal and is saved as a pipeline post in `03_creating/pipeline/`
+
+```bash
+second-brain draft "leadership lessons" --agent gateway
+second-brain draft "AI in healthcare" --agent gateway --model "deepinfra/deepseek-v3.2"
+```
+
+### Post-Bridge (Social Media Scheduling)
+
+Schedule posts from your content pipeline directly to X and LinkedIn. Posts in `03_creating/pipeline/` with status `ready` are sent to the Post-Bridge API, which handles the actual publishing at the scheduled time.
+
+**What you need:**
+- A [Post-Bridge](https://post-bridge.com) account with connected social accounts
+- An API key from Post-Bridge
+
+**Safe setup (3 steps):**
+
+```bash
+# Step 1: Add your Post-Bridge API key to your shell environment.
+# Open ~/.zshrc (or ~/.bashrc) and add:
+export POST_BRIDGE_API_KEY="your_api_key_here"
+
+# Then reload your shell:
+source ~/.zshrc
+
+# Step 2: Install dependencies and discover your social accounts.
+cd tools/post-bridge && bun install
+bun run src/index.ts accounts
+
+# Step 3: Verify it worked.
+bun run src/index.ts list
+```
+
+**How it works:**
+- `/schedule` command (or `bun run schedule-week`) scans the pipeline for ready posts
+- Each post is scheduled to X, LinkedIn, or both based on its `Platform` field
+- Posts are scheduled one per weekday (Mon-Fri) at 08:00 COT by default
+- The pipeline file's `Publish date` field is updated automatically
+
+```bash
+# Schedule a single post
+bun --cwd tools/post-bridge run src/index.ts schedule my-post.md --date 2026-03-02
+
+# Auto-schedule all ready posts starting next Monday
+bun --cwd tools/post-bridge run src/index.ts schedule-week --start 2026-03-02
+
+# Check scheduled posts
+bun --cwd tools/post-bridge run src/index.ts list --status scheduled
+
+# Check publish results
+bun --cwd tools/post-bridge run src/index.ts results
+```
+
+### Security Notes
+
+All integrations follow the same principle: **secrets live in your shell environment, not in files agents can read**.
+
+| Secret | How to set | Stored as |
+|--------|-----------|-----------|
+| `NOTION_API_TOKEN` | Shell environment (`~/.zshrc`) | `"$NOTION_API_TOKEN"` reference in config |
+| `AI_GATEWAY_API_KEY` | Shell environment or `config set apiKey` | Env var (preferred) or config file |
+| `POST_BRIDGE_API_KEY` | Shell environment (`~/.zshrc`) | Env var only (not stored in config) |
+
+The config file at `~/.config/second-brain/config.json` stores Notion auth as an environment variable reference string, not the raw token. The `config get apiKey` command masks the key (shows only first 4 and last 4 characters). This means you can safely let any AI agent read your vault and config without exposing credentials.
+
+---
+
 ## How It All Connects
 
 ```
@@ -790,6 +1063,7 @@ qmd context add ~/Documents/Second_Brain/02_reference/sources/books "Book summar
 |-----------|------------|
 | Files | Markdown (.md) |
 | Reader | Obsidian (free) |
+| Obsidian plugin | [Claude Sidebar](https://github.com/derek-larson14/obsidian-claude-sidebar) v1.7.1 |
 | CLI | `@arkangelai/second-brain` (Bun, zero deps) |
 | Search engine | QMD |
 | Database | SQLite + FTS5 + sqlite-vec |
@@ -799,6 +1073,9 @@ qmd context add ~/Documents/Second_Brain/02_reference/sources/books "Book summar
 | LLM runtime | node-llama-cpp |
 | Package manager | Bun |
 | Agent protocol | MCP (Model Context Protocol) |
+| Publishing | Notion API (`@notionhq/client`) — optional |
+| Scheduling | Post-Bridge API (`tools/post-bridge/`) — optional |
+| AI Gateway | Vercel AI Gateway (OpenAI-compatible) — optional |
 
 ---
 

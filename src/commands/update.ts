@@ -4,13 +4,18 @@ import {
   log,
   success,
   warn,
-  error,
   bold,
   dim,
   exec,
   requireQmd,
+  installClaudeSidebar,
 } from "../utils.ts";
-import { resolveVaultPath, getPackageRoot, VAULT_DIRS } from "../config.ts";
+import {
+  resolveVaultPath,
+  getPackageRoot,
+  VAULT_DIRS,
+  CLAUDE_SIDEBAR_VERSION,
+} from "../config.ts";
 import { copyTemplates } from "../templates.ts";
 
 export function update(vaultFlag?: string): void {
@@ -45,6 +50,14 @@ export function update(vaultFlag?: string): void {
     success("QMD up to date");
   } else {
     warn("QMD update failed — run: bun install -g @tobilu/qmd");
+  }
+
+  // ── Update Claude Sidebar plugin ──────────────────────────────────────
+  log("Updating Claude Sidebar plugin...");
+  if (installClaudeSidebar(vaultPath)) {
+    success(`Claude Sidebar v${CLAUDE_SIDEBAR_VERSION} up to date`);
+  } else {
+    warn("Plugin update failed — see https://github.com/derek-larson14/obsidian-claude-sidebar");
   }
 
   // ── Re-index ───────────────────────────────────────────────────────────

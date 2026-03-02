@@ -48,10 +48,12 @@ Second_Brain/
 │       └── articles/
 ├── 03_creating/           # Content in progress.
 │   ├── drafts/            # General drafts
-│   └── pipeline/          # Content engine posts (idea → draft → ready)
+│   ├── pipeline/          # Content engine posts (ready to publish)
+│   └── scheduled/         # Posts scheduled for future publish
 ├── 04_published/          # Finished, published work.
 ├── 05_archive/            # Inactive content. Out of sight, not deleted.
 ├── 06_system/             # Templates, scripts, configuration.
+│   ├── commands/          # Agent command prompts (answer, research, resource, therapy, schedule)
 │   ├── content-engine/    # Voice profile, structures, learnings
 │   ├── templates/
 │   └── scripts/
@@ -168,6 +170,38 @@ Each post is a file tracking: idea → draft → ready → published
 3. **Review** — weekly review with performance data → update learnings
 
 See `06_system/content-engine/` files for detailed instructions.
+
+---
+
+## Commands
+
+The vault ships with ready-to-use command prompts in `06_system/commands/`. These are agent-agnostic — any CLI agent can read and execute them.
+
+| Command | What it does | Prompt file |
+|---------|-------------|-------------|
+| `/answer` | Answer a question using **only** vault content | `06_system/commands/answer.md` |
+| `/research` | Research a topic with web + vault, create a sourced note | `06_system/commands/research.md` |
+| `/resource` | Ingest URL(s) into the vault as formatted notes | `06_system/commands/resource.md` |
+| `/therapy` | Organize a brain dump into structured, linked notes | `06_system/commands/therapy.md` |
+| `/schedule` | Schedule ready pipeline posts to X/LinkedIn via Post-Bridge | `06_system/commands/schedule.md` |
+
+### How to use
+
+**Claude Code:** Slash commands work automatically — type `/answer what is counter-positioning?`
+
+**Any other agent:** Tell the agent to read the prompt file and follow it:
+```
+Read 06_system/commands/research.md and follow the instructions.
+Topic: AI agents in healthcare
+```
+
+### When to use which command
+
+- **Know it's in the vault?** → `/answer` (vault-only, no web)
+- **Need fresh external info?** → `/research` (web + vault, creates a note)
+- **Have a URL to save?** → `/resource` (summarize + ingest)
+- **Head full of ideas?** → `/therapy` (brain dump → structured notes)
+- **Ready posts to publish?** → `/schedule` (schedule to X/LinkedIn via Post-Bridge)
 
 ---
 

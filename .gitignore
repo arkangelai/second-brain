@@ -19,6 +19,9 @@ dist/
 # Second Brain config (contains API keys)
 .config/
 
+# Post-Bridge runtime cache
+tools/post-bridge/.post-bridge.json
+
 # Editor
 *.swp
 *.swo

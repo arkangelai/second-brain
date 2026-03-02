@@ -207,6 +207,12 @@ function resolvePath(p: string): string {
   return p;
 }
 
+// ─── Claude Sidebar plugin ─────────────────────────────────────────────────
+
+export const CLAUDE_SIDEBAR_VERSION = "1.7.1";
+export const CLAUDE_SIDEBAR_BASE_URL = `https://github.com/derek-larson14/obsidian-claude-sidebar/releases/download/${CLAUDE_SIDEBAR_VERSION}`;
+export const CLAUDE_SIDEBAR_FILES = ["main.js", "manifest.json", "styles.css"];
+
 // ─── Vault directories ─────────────────────────────────────────────────────
 
 export const VAULT_DIRS = [
@@ -219,8 +225,10 @@ export const VAULT_DIRS = [
   "02_reference/sources/articles",
   "03_creating/drafts",
   "03_creating/pipeline",
+  "03_creating/scheduled",
   "04_published",
   "05_archive",
+  "06_system/commands",
   "06_system/content-engine",
   "06_system/templates",
   "06_system/scripts",

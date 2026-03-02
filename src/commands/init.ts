@@ -4,14 +4,20 @@ import {
   log,
   success,
   warn,
-  error,
   bold,
   dim,
   requireBun,
   checkCommand,
   exec,
+  installClaudeSidebar,
 } from "../utils.ts";
-import { resolveVaultPath, saveConfig, getPackageRoot, VAULT_DIRS } from "../config.ts";
+import {
+  resolveVaultPath,
+  saveConfig,
+  getPackageRoot,
+  VAULT_DIRS,
+  CLAUDE_SIDEBAR_VERSION,
+} from "../config.ts";
 import { copyTemplates } from "../templates.ts";
 
 export function init(vaultFlag?: string): void {
@@ -41,6 +47,14 @@ export function init(vaultFlag?: string): void {
     success(`${copied} template file${copied === 1 ? "" : "s"} copied`);
   } else {
     success("All templates already present");
+  }
+
+  // ── Install Claude Sidebar plugin ─────────────────────────────────────
+  log("Installing Claude Sidebar plugin...");
+  if (installClaudeSidebar(vaultPath)) {
+    success(`Claude Sidebar v${CLAUDE_SIDEBAR_VERSION} installed`);
+  } else {
+    warn("Plugin install failed — see https://github.com/derek-larson14/obsidian-claude-sidebar");
   }
 
   // ── Install QMD if missing ─────────────────────────────────────────────
@@ -104,9 +118,11 @@ export function init(vaultFlag?: string): void {
   console.log();
   log("Next steps:");
   log(`  1. Open Obsidian → "Open folder as vault" → ${vaultPath}`);
-  log("  2. Edit AGENTS.md and voice-profile.md with your info");
-  log("  3. Start adding notes to 00_inbox/");
-  log(`  4. ${dim("second-brain status")} — check vault health`);
-  log(`  5. ${dim("second-brain draft \"topic\"")} — generate content`);
+  log("  2. Restart Obsidian (or Cmd+Shift+P → \"Reload app without saving\")");
+  log("  3. Go to Settings → Community Plugins → enable \"Claude Sidebar\"");
+  log("  4. Edit AGENTS.md and voice-profile.md with your info");
+  log("  5. Start adding notes to 00_inbox/");
+  log(`  6. ${dim("second-brain status")} — check vault health`);
+  log(`  7. ${dim("second-brain draft \"topic\"")} — generate content`);
   console.log();
 }

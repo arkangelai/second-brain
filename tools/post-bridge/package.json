@@ -1,0 +1,18 @@
+{
+  "name": "post-bridge-cli",
+  "version": "1.0.0",
+  "description": "CLI for scheduling social media posts via Post-Bridge API",
+  "private": true,
+  "scripts": {
+    "accounts": "bun run src/index.ts accounts",
+    "preview": "bun run src/index.ts preview",
+    "schedule": "bun run src/index.ts schedule",
+    "schedule-week": "bun run src/index.ts schedule-week",
+    "list": "bun run src/index.ts list",
+    "cancel": "bun run src/index.ts cancel",
+    "results": "bun run src/index.ts results"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.1.0"
+  }
+}
