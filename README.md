@@ -20,6 +20,7 @@ The stack:
 | **Reading** | [Obsidian](https://obsidian.md) | Visual navigation, `[[wiki links]]`, graph view |
 | **Search** | [QMD](https://github.com/tobi/qmd) | BM25 + vector + reranking — 100% local |
 | **Agent** | Any (Claude Code, Cursor, Codex, etc.) | Reads, searches, and creates from your vault |
+| **Sidebar** | [Claude Sidebar](https://github.com/derek-larson14/obsidian-claude-sidebar) | Claude Code terminal embedded in Obsidian |
 | **CLI** | `second-brain` | Setup, search, scaffold, and draft from the terminal |
 
 ---
@@ -67,6 +68,83 @@ second-brain init
 2. Click "Open folder as vault"
 3. Select `~/Documents/Second_Brain`
 4. Done — you'll see wiki links, graph view, and full navigation
+
+### Activate Claude Sidebar
+
+The `init` command automatically installs the [Claude Sidebar](https://github.com/derek-larson14/obsidian-claude-sidebar) plugin into your vault. To activate it:
+
+1. Restart Obsidian (or reload: `Cmd+Shift+P` → "Reload app without saving")
+2. Go to **Settings → Community Plugins → enable "Claude Sidebar"**
+
+The plugin gives you a full Claude Code terminal right in your Obsidian sidebar — no need to switch between windows.
+
+**What you get:**
+- Embedded Claude Code terminal in Obsidian's sidebar panel
+- Multi-tab support — run multiple Claude instances simultaneously
+- Right-click any folder to launch Claude scoped to that directory
+- Send selected text or file paths directly to Claude
+- Drag-and-drop files onto the sidebar to reference them
+- Multi-backend support — switch between Claude Code, Codex, OpenCode, or Gemini CLI
+
+**Requirements:** [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code/overview) must be installed and authenticated. The plugin runs the CLI inside Obsidian — it doesn't call the API directly.
+
+### Your First Session
+
+Once Obsidian is open and Claude Sidebar is active, click the Claude icon in the sidebar to start a terminal. Here's a three-step walkthrough to get your vault loaded and generating content:
+
+#### Step 1 — Set up your voice profile
+
+Tell Claude about yourself so it can write in your voice. Paste this into the sidebar:
+
+```
+Read AGENTS.md to orient yourself, then open 06_system/content-engine/voice-profile.md.
+
+Interview me to fill it out: ask me about who I am, what I do, who my audience is,
+my content pillars, my tone, and paste in any example posts I share. Update the file
+with my answers as we go.
+```
+
+Claude will ask you questions about your background, audience, tone, and writing style, then fill in `voice-profile.md` for you.
+
+#### Step 2 — Feed your vault
+
+Your second brain is only as good as what's in it. Use the `/resource` command to import articles, YouTube videos, PDFs, or anything you've been thinking about:
+
+**Claude Code:**
+```
+/resource https://example.com/article-i-liked
+```
+
+**Any agent:**
+```
+Read 06_system/commands/resource.md and follow the instructions.
+Input: https://example.com/article-i-liked https://youtube.com/watch?v=video-id
+```
+
+You can feed it anything — book highlights, podcast episodes, blog posts, research papers. Each URL gets summarized and saved as a formatted note with wiki links to related content. The more you add, the richer the output when you generate content later.
+
+#### Step 3 — Generate your first content
+
+Now that your vault has a voice profile and some source material, try generating your first draft:
+
+```bash
+second-brain draft "a topic you care about"
+```
+
+Or use the vault commands directly in any agent:
+
+**Claude Code:**
+```
+/research AI agents in healthcare
+```
+
+**Any agent:**
+```
+Read 06_system/commands/research.md and follow the instructions.
+Topic: AI agents in healthcare
+```
+
+From here, review what the agent generated, edit in Obsidian, and iterate. The more notes and feedback you add to `learnings.md`, the better the output gets over time.
 
 ---
 
@@ -246,6 +324,59 @@ Priority order:
 
 ---
 
+## Vault Commands
+
+Your vault ships with 4 agent-agnostic commands — prompt files in `06_system/commands/` that any CLI agent can read and execute. Claude Code users also get `/slash` commands automatically.
+
+| Command | What it does |
+|---------|-------------|
+| `/answer` | Answer a question using **only** vault content — no web |
+| `/research` | Research a topic with web + vault, create a sourced note |
+| `/resource` | Ingest URL(s) into the vault as formatted notes |
+| `/therapy` | Organize a brain dump into structured, linked notes |
+
+### Usage
+
+**Claude Code** (slash commands work automatically):
+
+```
+/answer what is counter-positioning?
+/research AI agents in healthcare 2026
+/resource https://paulgraham.com/startupideas.html
+/therapy I've been thinking about three things: first, the way our product...
+```
+
+**Any other CLI agent** (Cursor, Codex, OpenCode, etc.):
+
+Tell the agent to read the prompt file and follow it:
+
+```
+Read 06_system/commands/answer.md and follow the instructions.
+Question: what is counter-positioning?
+```
+
+```
+Read 06_system/commands/resource.md and follow the instructions.
+Input: https://paulgraham.com/startupideas.html
+```
+
+### When to use which command
+
+| Situation | Command |
+|-----------|---------|
+| You know it's in the vault | `/answer` — vault-only search, no web |
+| You need fresh external info | `/research` — web + vault, creates a note |
+| You have a URL to save | `/resource` — summarize + ingest |
+| Your head is full of ideas | `/therapy` — brain dump → structured notes |
+
+### Customizing commands
+
+The prompt files live in `06_system/commands/`. Edit them to match your workflow — change the note formats, default folders, output language, or add new commands.
+
+To add a new command, create a new `.md` file in `06_system/commands/` with the prompt instructions. For Claude Code slash command support, also create a matching file in `.claude/commands/` with a `$ARGUMENTS` reference.
+
+---
+
 ## Vault Structure
 
 ```
@@ -274,6 +405,11 @@ Second_Brain/
 ├── 04_published/             # Finished, published work
 ├── 05_archive/               # Inactive content (out of sight, not deleted)
 └── 06_system/                # Templates, scripts, configuration
+    ├── commands/             # Agent command prompts
+    │   ├── answer.md         # /answer — ask the vault
+    │   ├── research.md       # /research — web + vault research
+    │   ├── resource.md       # /resource — ingest URLs
+    │   └── therapy.md        # /therapy — brain dump → notes
     ├── content-engine/
     │   ├── voice-profile.md  # Your voice, audience, pillars, tone
     │   ├── structures.md     # Proven post formats with templates
@@ -790,6 +926,7 @@ qmd context add ~/Documents/Second_Brain/02_reference/sources/books "Book summar
 |-----------|------------|
 | Files | Markdown (.md) |
 | Reader | Obsidian (free) |
+| Obsidian plugin | [Claude Sidebar](https://github.com/derek-larson14/obsidian-claude-sidebar) v1.7.1 |
 | CLI | `@arkangelai/second-brain` (Bun, zero deps) |
 | Search engine | QMD |
 | Database | SQLite + FTS5 + sqlite-vec |

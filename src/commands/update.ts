@@ -10,7 +10,14 @@ import {
   exec,
   requireQmd,
 } from "../utils.ts";
-import { resolveVaultPath, getPackageRoot, VAULT_DIRS } from "../config.ts";
+import {
+  resolveVaultPath,
+  getPackageRoot,
+  VAULT_DIRS,
+  CLAUDE_SIDEBAR_VERSION,
+  CLAUDE_SIDEBAR_BASE_URL,
+  CLAUDE_SIDEBAR_FILES,
+} from "../config.ts";
 import { copyTemplates } from "../templates.ts";
 
 export function update(vaultFlag?: string): void {
@@ -45,6 +52,29 @@ export function update(vaultFlag?: string): void {
     success("QMD up to date");
   } else {
     warn("QMD update failed — run: bun install -g @tobilu/qmd");
+  }
+
+  // ── Update Claude Sidebar plugin ──────────────────────────────────────
+  log("Updating Claude Sidebar plugin...");
+  const pluginDir = join(vaultPath, ".obsidian", "plugins", "claude-sidebar");
+  mkdirSync(pluginDir, { recursive: true });
+
+  let pluginOk = true;
+  for (const file of CLAUDE_SIDEBAR_FILES) {
+    const dl = exec([
+      "curl", "-fsSL",
+      "-o", join(pluginDir, file),
+      `${CLAUDE_SIDEBAR_BASE_URL}/${file}`,
+    ]);
+    if (!dl.ok) {
+      pluginOk = false;
+      warn(`Failed to download ${file}`);
+    }
+  }
+  if (pluginOk) {
+    success(`Claude Sidebar v${CLAUDE_SIDEBAR_VERSION} up to date`);
+  } else {
+    warn("Plugin update failed — see https://github.com/derek-larson14/obsidian-claude-sidebar");
   }
 
   // ── Re-index ───────────────────────────────────────────────────────────
