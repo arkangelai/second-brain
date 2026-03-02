@@ -225,6 +225,7 @@ export const VAULT_DIRS = [
   "02_reference/sources/articles",
   "03_creating/drafts",
   "03_creating/pipeline",
+  "03_creating/scheduled",
   "04_published",
   "05_archive",
   "06_system/commands",

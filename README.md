@@ -22,6 +22,7 @@ The stack:
 | **Agent** | Any (Claude Code, Cursor, Codex, etc.) | Reads, searches, and creates from your vault |
 | **Sidebar** | [Claude Sidebar](https://github.com/derek-larson14/obsidian-claude-sidebar) | Claude Code terminal embedded in Obsidian |
 | **CLI** | `second-brain` | Setup, search, scaffold, and draft from the terminal |
+| **Publishing** | [Notion](https://notion.so) (optional) | Sync pipeline posts to a Notion database |
 
 ---
 
@@ -401,7 +402,8 @@ Second_Brain/
 │       └── articles/         # Article summaries
 ├── 03_creating/              # Work in progress
 │   ├── drafts/               # General drafts
-│   └── pipeline/             # Content pipeline (idea → draft → ready)
+│   ├── pipeline/             # Content ready to publish
+│   └── scheduled/            # Posts scheduled for future publish
 ├── 04_published/             # Finished, published work
 ├── 05_archive/               # Inactive content (out of sight, not deleted)
 └── 06_system/                # Templates, scripts, configuration
@@ -789,13 +791,16 @@ Save all three in 03_creating/pipeline/.
 
 ### The Content Pipeline
 
-Each piece of content lives as a file in `03_creating/pipeline/` and moves through stages:
+Content moves through folders as it progresses:
 
 ```
-idea → draft → ready → published
+03_creating/drafts/      → work in progress, rough ideas
+03_creating/pipeline/    → ready to publish (status: ready)
+03_creating/scheduled/   → queued for a future date
+04_published/            → live, published content
 ```
 
-The pipeline file tracks everything:
+Each pipeline file tracks metadata as bold key-value pairs:
 
 ```markdown
 # Post Title
@@ -816,7 +821,7 @@ The actual post text.
 Revisions, alternatives, performance after publishing.
 ```
 
-When published, move the file to `04_published/` and log results in `learnings.md`.
+When you run `second-brain publish`, ready posts in `03_creating/pipeline/` are pushed to Notion and automatically moved to `04_published/`. After publishing, use `second-brain pull` to sync metrics back from Notion into your local files. Log results in `learnings.md` to improve future drafts.
 
 ### Why This Gets Better Over Time
 
@@ -896,6 +901,88 @@ qmd context add ~/Documents/Second_Brain/02_reference/sources/books "Book summar
 
 ---
 
+## Optional Integrations
+
+These are **entirely optional**. The vault works fully without them. Set them up when you're ready to publish content or use the AI gateway for drafting.
+
+### Notion (Publish & Pull)
+
+Sync your content pipeline to a Notion database. Posts in `03_creating/pipeline/` get pushed to Notion, and metrics from Notion get pulled back into your local files.
+
+**What you need:**
+- A [Notion integration](https://www.notion.so/my-integrations) with access to your content database
+- The integration token (starts with `secret_...`)
+
+**Safe setup (3 steps):**
+
+```bash
+# Step 1: Add your Notion token to your shell environment.
+# Open ~/.zshrc (or ~/.bashrc) in a text editor and add:
+export NOTION_API_TOKEN="secret_your_token_here"
+
+# Then reload your shell:
+source ~/.zshrc
+
+# Step 2: Run the guided setup (paste your database URL when prompted).
+second-brain publish setup
+
+# Step 3: Verify it worked.
+second-brain publish --dry-run
+```
+
+Your token is stored as an environment variable reference (`$NOTION_API_TOKEN`) in the config file — **the actual secret never touches the config**. This means your AI agents can read the config safely without seeing your credentials.
+
+**How it works:**
+- `second-brain publish` — pushes ready posts from `03_creating/pipeline/` to Notion, then moves them to `04_published/`
+- `second-brain publish --dry-run` — preview what would be published without writing
+- `second-brain pull` — syncs metrics and properties from Notion back into local markdown files
+- Files are tracked by SHA-256 hash, so unchanged files are skipped automatically
+
+See the [CLI Commands](#notion-integration-publish--pull) section above for all flags and options.
+
+### AI Gateway (Draft Without a CLI Agent)
+
+If you don't have Claude Code, Cursor, or Codex installed, you can still use `second-brain draft` via the AI Gateway — an OpenAI-compatible API endpoint that streams responses directly to your terminal.
+
+**What you need:**
+- An API key for the gateway (contact your team or provider)
+
+**Safe setup (2 steps):**
+
+```bash
+# Option A: Environment variable (recommended — never stored on disk)
+export AI_GATEWAY_API_KEY="your_api_key"
+
+# Option B: Store in config (masked when displayed)
+second-brain config set apiKey "your_api_key"
+
+# Optional: change the default model
+second-brain config set model "deepinfra/deepseek-v3.2"
+```
+
+**How it works:**
+- The gateway is auto-detected as the last fallback when no CLI agent is found but an API key is configured
+- Override explicitly with `--agent gateway`
+- Output streams to your terminal and is saved as a pipeline post in `03_creating/pipeline/`
+
+```bash
+second-brain draft "leadership lessons" --agent gateway
+second-brain draft "AI in healthcare" --agent gateway --model "deepinfra/deepseek-v3.2"
+```
+
+### Security Notes
+
+All integrations follow the same principle: **secrets live in your shell environment, not in files agents can read**.
+
+| Secret | How to set | Stored as |
+|--------|-----------|-----------|
+| `NOTION_API_TOKEN` | Shell environment (`~/.zshrc`) | `"$NOTION_API_TOKEN"` reference in config |
+| `AI_GATEWAY_API_KEY` | Shell environment or `config set apiKey` | Env var (preferred) or config file |
+
+The config file at `~/.config/second-brain/config.json` stores Notion auth as an environment variable reference string, not the raw token. The `config get apiKey` command masks the key (shows only first 4 and last 4 characters). This means you can safely let any AI agent read your vault and config without exposing credentials.
+
+---
+
 ## How It All Connects
 
 ```
@@ -936,6 +1023,8 @@ qmd context add ~/Documents/Second_Brain/02_reference/sources/books "Book summar
 | LLM runtime | node-llama-cpp |
 | Package manager | Bun |
 | Agent protocol | MCP (Model Context Protocol) |
+| Publishing | Notion API (`@notionhq/client`) — optional |
+| AI Gateway | Vercel AI Gateway (OpenAI-compatible) — optional |
 
 ---
 

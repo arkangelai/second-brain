@@ -48,7 +48,8 @@ Second_Brain/
 │       └── articles/
 ├── 03_creating/           # Content in progress.
 │   ├── drafts/            # General drafts
-│   └── pipeline/          # Content engine posts (idea → draft → ready)
+│   ├── pipeline/          # Content engine posts (ready to publish)
+│   └── scheduled/         # Posts scheduled for future publish
 ├── 04_published/          # Finished, published work.
 ├── 05_archive/            # Inactive content. Out of sight, not deleted.
 ├── 06_system/             # Templates, scripts, configuration.
