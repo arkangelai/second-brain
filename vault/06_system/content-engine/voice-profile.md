@@ -1,41 +1,44 @@
 # Voice Profile
 
-Last updated: YYYY-MM-DD
+Last updated: 2026-03-04
 
 ---
 
 ## Who We Are
 
-_Describe yourself or your company in 2-3 sentences. What do you build? What do you care about?_
+Ingeniera de Machine Learning construyendo productos de IA para el sector salud. Llevo 4 años en tech, 2 de ellos en Arkangel AI. Estoy en las trincheras — construyendo, aprendiendo, iterando.
 
-- **Company:** [Your Company]
-- **Industry:** [Your Industry]
-- **Location:** [Your City]
-- **Stage:** [Seed / Growth / Scale]
+- **Company:** Arkangel AI
+- **Industry:** HealthTech / AI
+- **Location:** Colombia
+- **Stage:** Growth (2 años en la empresa)
 
 ---
 
 ## What We Do
 
-_One paragraph explaining what you do._
+Creamos productos de inteligencia artificial diseñados específicamente para el sector salud. No adaptamos herramientas genéricas — construimos soluciones pensadas desde cero para problemas clínicos reales.
 
-- **In plain language:** _One sentence a stranger would understand._
-- **Key differentiator:** _What makes you different from alternatives._
+- **In plain language:** La inteligencia artificial no es tan inteligente como parece. Nosotros la hacemos útil para la salud.
+- **Key differentiator:** No solo usamos AI — creamos productos pensados para salud desde el diseño.
 
 ---
 
 ## Our Audience
 
 ### On X (Twitter)
-- **Who they are:** _Describe your current followers_
-- **Who we want to reach:** _Describe your ideal audience_
-- **What they want from us:** _What value do they expect_
+- **Who they are:** Personas del sector salud, profesionales tech interesados en HealthTech
+- **Who we want to reach:** Profesionales de salud curiosos por AI — médicos, administradores, tomadores de decisiones
+- **What they want from us:** Entender AI sin hype. Contenido que eduque y que conecte naturalmente con lo que Arkangel construye
 
 ### On LinkedIn
-- **Who they are:** _Describe your current connections_
-- **Who we want to reach:** _Describe your ideal audience_
-- **What they want from us:** _What value do they expect_
-- **What performs best:** _What type of content gets engagement_
+- **Who they are:** Misma audiencia, tono más profesional
+- **Who we want to reach:** Líderes en salud y tech en LATAM
+- **What they want from us:** Perspectiva real desde alguien que construye AI en salud, no teoría
+- **What performs best:** _Por definir_
+
+### Content philosophy
+Liderar con valor (AI en salud, aprendizajes reales, perspectiva técnica). Arkangel aparece orgánicamente como contexto, nunca como pitch. La regla: si quitas la mención de Arkangel y el post sigue siendo útil, está bien escrito.
 
 ---
 
@@ -43,49 +46,45 @@ _One paragraph explaining what you do._
 
 _Pick 3-4 topics you'll consistently create about. Each pillar needs an "angle" — your unique perspective._
 
-### 1. [Pillar Name]
-_Description of the topic._
+### 1. AI aplicada en salud
+Qué funciona, qué no, y por qué. Casos reales, limitaciones honestas, lecciones desde la implementación.
 
-**Our angle:** _"What makes our take on this unique..."_
+**Our angle:** Hablo desde adentro — construyo estos productos, no solo opino sobre ellos.
 
-**Source notes:** _Link to relevant vault notes with [[wiki links]]_
+### 2. Aprendizajes como ML engineer joven
+Lo que estoy aprendiendo en el camino. Errores, descubrimientos, lo que nadie te dice cuando empiezas.
 
-### 2. [Pillar Name]
-_Description of the topic._
+**Our angle:** Sin pretender ser experta de 20 años. Perspectiva fresca y honesta de alguien que está creciendo en tiempo real.
 
-**Our angle:** _"..."_
+### 3. Desmitificar la AI
+Bajar la AI del pedestal. Explicar qué hay detrás sin hype ni tecnicismos innecesarios. "La inteligencia artificial no es tan inteligente como parece."
 
-### 3. [Pillar Name]
-_Description of the topic._
-
-**Our angle:** _"..."_
-
-### 4. Product Updates
-What we're building, what we shipped, why it matters.
-
-**Our angle:** Show the 'why' behind what we build, not just the 'what'.
+**Our angle:** Trabajo con AI todos los días y sé lo que puede y lo que no puede hacer. Corto el ruido.
 
 ---
 
 ## Our Voice
 
 ### Tone
-- [ ] Direct and honest — no corporate fluff
-- [ ] Reflective — we think out loud
-- [ ] Warm but not soft — we care but we're not afraid to say hard things
-- [ ] Builder mindset — we're in the arena, not on the sidelines
-- [ ] Curious — always learning
-- [ ] Minimal — says more with less
-- [ ] Craft-oriented — cares about how something is made
-
-_Check the ones that apply. Remove or add as needed._
+- [x] Directa — sin rodeos, al grano
+- [x] Clara y precisa — la información importa, el relleno no
+- [x] Curiosa — siempre aprendiendo
+- [ ] Minimal — dice más con menos
 
 ### We sound like...
 
 _Paste 3-5 of your best-performing posts here. These are the single most important calibration tool for the whole system._
 
-**Best post 1:**
-> [paste here]
+**Ejemplo 1 (LinkedIn — draft):**
+> Llevo 2 años construyendo productos de AI para salud.
+>
+> Lo primero que aprendí: el modelo es la parte fácil.
+>
+> Lo difícil es que los datos clínicos reales vienen sucios, incompletos, en formatos que nadie estandarizó. Que el médico tiene 3 minutos entre pacientes y no va a aprender una interfaz nueva. Que un error del 2% en un dashboard es aceptable, pero un error del 2% en un diagnóstico no.
+>
+> La AI no es tan inteligente como parece. Lo que la hace útil no es el algoritmo — es entender el problema real antes de escribir una línea de código.
+>
+> Eso no sale en los papers. Sale de estar en la trinchera.
 
 **Best post 2:**
 > [paste here]
@@ -119,10 +118,7 @@ _Paste 3-5 of your best-performing posts here. These are the single most importa
 ## Influences & Aspirations
 
 ### Writers/creators we admire (style reference)
-- _Name — why (one line)_
-- _Name — why (one line)_
-- _Name — why (one line)_
+- Andy Weir (The Martian) — Directo, da los detalles necesarios sin abrumar. Técnico pero amigable. Fácil de leer sin dejar de ser interesante.
 
 ### Books that shaped our thinking
-- _[[book-name]] (topic)_
-- _[[book-name]] (topic)_
+- The Martian — Andy Weir (referencia de tono y estilo de comunicación técnica)
