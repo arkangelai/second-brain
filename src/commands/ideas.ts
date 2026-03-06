@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import { spawnSync } from "bun";
 import { createInterface } from "readline/promises";
@@ -108,6 +108,9 @@ export async function ideas(
       return;
     }
 
+    const vaultPath = config.vaultPath;
+    const date = dateArg || todayISO();
+
     // Fetch page bodies in parallel
     const pagesWithBody = await Promise.all(
       response.results.map(async (page: any) => ({
@@ -116,43 +119,63 @@ export async function ideas(
       }))
     );
 
+    // Fetch Healthcare Influencers
+    let influencersDatabaseId = (notionConfig as any).influencersDatabaseId;
+    if (!influencersDatabaseId) {
+      influencersDatabaseId = await detectInfluencersDatabase(client);
+      if (influencersDatabaseId) {
+        saveConfig({
+          integrations: {
+            ...config.integrations,
+            notion: { ...notionConfig, ideasDatabaseId: dbId, influencersDatabaseId },
+          },
+        });
+      }
+    }
+
+    let influencersMarkdown = "";
+    if (influencersDatabaseId) {
+      influencersMarkdown = await fetchInfluencers(client, influencersDatabaseId);
+    }
+
+    // Build markdown content
+    const mdSections: string[] = [`# Ideas — ${date}\n`];
+
     for (const { page, body } of pagesWithBody) {
       const props = page.properties;
       const titulo = readPropertyValue(props.Titulo);
       const fecha = props.Fecha?.date?.start || "";
-      const status = readPropertyValue(props.Status);
       const tipo = readPropertyValue(props.Tipo);
       const plataforma = readPropertyValue(props.Plataforma);
 
-      log(bold(titulo));
-      if (fecha) log(`  Fecha:      ${dim(fecha)}`);
-      if (status) log(`  Status:     ${dim(status)}`);
-      if (tipo) log(`  Tipo:       ${dim(tipo)}`);
-      if (plataforma) log(`  Plataforma: ${dim(plataforma)}`);
+      mdSections.push(`## ${titulo}`);
+      mdSections.push(`**Fecha:** ${fecha}  `);
+      mdSections.push(`**Tipo:** ${tipo}  `);
+      mdSections.push(`**Plataforma:** ${plataforma}\n`);
 
-      // Display body sections
-      if (body) {
-        for (const line of body.split("\n")) {
-          if (line.startsWith("## ")) {
-            console.log();
-            log(bold(line.slice(3)));
-          } else if (line.startsWith("- ")) {
-            log(`    ${dim(line)}`);
-          } else if (line.trim()) {
-            log(`    ${line}`);
-          }
-        }
-      }
-      console.log();
+      if (body) mdSections.push(body);
+      mdSections.push("");
     }
 
+    if (influencersMarkdown) {
+      mdSections.push("\n---\n");
+      mdSections.push(influencersMarkdown);
+    }
+
+    const markdown = mdSections.join("\n");
+
+    // Write to inbox
+    const inboxDir = join(vaultPath, "00_inbox");
+    mkdirSync(inboxDir, { recursive: true });
+    const filePath = join(inboxDir, `ideas-${date}.md`);
+    writeFileSync(filePath, markdown + "\n");
+
+    success(`Saved to ${bold(`00_inbox/ideas-${date}.md`)}`);
     log(dim(`${response.results.length} idea(s) found.`));
 
     // ── Ask user if they want to generate posts ────────────────────────
     const shouldGenerate = options.generate || await askToGenerate();
     if (!shouldGenerate) return;
-
-    const vaultPath = config.vaultPath;
 
     // Load content engine files
     const engineDir = join(vaultPath, "06_system", "content-engine");
@@ -168,7 +191,7 @@ export async function ideas(
       return `# ${titulo}\nPlataforma: ${plataforma}\n\n${body}`;
     }).join("\n\n---\n\n");
 
-    const prompt = buildPostPrompt(ideasText, voiceProfile, structures, learnings);
+    const prompt = buildPostPrompt(ideasText, voiceProfile, structures, learnings, influencersMarkdown);
 
     console.log();
 
@@ -179,12 +202,11 @@ export async function ideas(
       log(bold("Generating posts via gateway..."));
       log(`Model: ${dim(model)}`);
       console.log();
-      await streamGatewayResponse(prompt, model, apiKey);
-      console.log();
+      const output = await streamGatewayResponse(prompt, model, apiKey);
+      saveGeneratedPost(vaultPath, date, output);
     } else if (checkCommand("claude", "Install Claude Code: https://docs.anthropic.com/en/docs/claude-code")) {
       log(bold("Generating posts via Claude CLI..."));
       console.log();
-      // Pass prompt via stdin to avoid command line length limits on Windows
       const env = { ...process.env };
       delete env.CLAUDECODE;
       const result = spawnSync(["claude", "-p"], {
@@ -199,8 +221,7 @@ export async function ideas(
         process.exit(result.exitCode);
       }
       const output = result.stdout.toString();
-      console.log(output);
-      console.log();
+      saveGeneratedPost(vaultPath, date, output);
     } else {
       error("No generation method available.");
       log(`Either set ${dim("AI_GATEWAY_API_KEY")} or install ${dim("claude")} CLI.`);
@@ -211,6 +232,16 @@ export async function ideas(
     error(`Failed to query ideas: ${message}`);
     process.exit(1);
   }
+}
+
+function saveGeneratedPost(vaultPath: string, date: string, content: string): void {
+  const pipelineDir = join(vaultPath, "03_creating", "pipeline");
+  mkdirSync(pipelineDir, { recursive: true });
+  const postPath = join(pipelineDir, `posts-${date}.md`);
+  writeFileSync(postPath, content.endsWith("\n") ? content : `${content}\n`);
+  console.log();
+  success(`Posts saved to ${bold(`03_creating/pipeline/posts-${date}.md`)}`);
+  console.log();
 }
 
 function extractText(richText: any[]): string {
@@ -259,6 +290,61 @@ async function askToGenerate(): Promise<boolean> {
   return answer.trim().toLowerCase() === "y";
 }
 
+// Properties that identify an influencers database
+const INFLUENCERS_REQUIRED_PROPERTIES: Record<string, string> = {
+  Nombre: "title",
+  Especialidad: "select",
+  "Handle X": "rich_text",
+  "Handle LinkedIn": "rich_text",
+};
+
+async function detectInfluencersDatabase(client: any): Promise<string | null> {
+  const response: any = await client.search({
+    filter: { property: "object", value: "database" },
+  });
+
+  for (const db of response.results) {
+    const props = db.properties || {};
+    const matches = Object.entries(INFLUENCERS_REQUIRED_PROPERTIES).every(
+      ([name, type]) => props[name]?.type === type
+    );
+    if (matches) return db.id;
+  }
+
+  return null;
+}
+
+async function fetchInfluencers(client: any, databaseId: string): Promise<string> {
+  const response: any = await client.databases.query({
+    database_id: databaseId,
+    page_size: 100,
+  });
+
+  if (response.results.length === 0) return "";
+
+  const lines: string[] = ["## Healthcare Influencers\n"];
+  lines.push("| Nombre | Especialidad | X | LinkedIn | Por qué importa |");
+  lines.push("|--------|-------------|---|----------|-----------------|");
+
+  for (const page of response.results) {
+    const p = page.properties;
+    const nombre = p.Nombre?.title?.[0]?.plain_text || "";
+    if (!nombre) continue;
+    const especialidad = p.Especialidad?.select?.name || "";
+    const handleX = p["Handle X"]?.rich_text?.[0]?.plain_text || "";
+    const segX = p["Seguidores X"]?.number || 0;
+    const handleLI = p["Handle LinkedIn"]?.rich_text?.[0]?.plain_text || "";
+    const segLI = p["Seguidores LinkedIn"]?.number || 0;
+    const porque = p["Por que importa"]?.rich_text?.[0]?.plain_text || "";
+
+    const xCol = handleX ? `${handleX} (${segX.toLocaleString()})` : "—";
+    const liCol = handleLI ? `${handleLI} (${segLI.toLocaleString()})` : "—";
+    lines.push(`| ${nombre} | ${especialidad} | ${xCol} | ${liCol} | ${porque} |`);
+  }
+
+  return lines.join("\n");
+}
+
 // Properties that identify an ideas database
 const IDEAS_REQUIRED_PROPERTIES: Record<string, string> = {
   Fecha: "date",
@@ -292,7 +378,8 @@ function buildPostPrompt(
   ideasText: string,
   voiceProfile: string,
   structures: string,
-  learnings: string
+  learnings: string,
+  influencers: string
 ): string {
   const sections: string[] = [];
 
@@ -318,6 +405,10 @@ function buildPostPrompt(
   }
 
   sections.push(`## Ideas to Write About\n\n${ideasText}`);
+
+  if (influencers) {
+    sections.push(`## Healthcare Influencers\n\nThese influencers are relevant to the topics above. Consider tagging or referencing them when appropriate.\n\n${influencers}`);
+  }
 
   sections.push(`## Task
 
