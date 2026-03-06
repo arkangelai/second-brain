@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { spawnSync } from "bun";
+import { createInterface } from "readline/promises";
 import { resolveConfig, resolveApiKey, resolveModel, saveConfig } from "../config.ts";
 import { createNotionClient, readPropertyValue } from "../notion.ts";
 import { streamGatewayResponse } from "../gateway.ts";
@@ -107,94 +108,155 @@ export async function ideas(
       return;
     }
 
-    for (const page of response.results) {
+    // Fetch page bodies in parallel
+    const pagesWithBody = await Promise.all(
+      response.results.map(async (page: any) => ({
+        page,
+        body: await readPageBody(client, page.id),
+      }))
+    );
+
+    for (const { page, body } of pagesWithBody) {
       const props = page.properties;
       const titulo = readPropertyValue(props.Titulo);
       const fecha = props.Fecha?.date?.start || "";
       const status = readPropertyValue(props.Status);
       const tipo = readPropertyValue(props.Tipo);
       const plataforma = readPropertyValue(props.Plataforma);
-      const resumen = readPropertyValue(props.Resumen);
-      const angulos = readPropertyValue(props["Angulos de Contenido"]);
 
       log(bold(titulo));
       if (fecha) log(`  Fecha:      ${dim(fecha)}`);
       if (status) log(`  Status:     ${dim(status)}`);
       if (tipo) log(`  Tipo:       ${dim(tipo)}`);
       if (plataforma) log(`  Plataforma: ${dim(plataforma)}`);
-      if (resumen) log(`  Resumen:    ${resumen}`);
-      if (angulos) log(`  Angulos:    ${angulos}`);
+
+      // Display body sections
+      if (body) {
+        for (const line of body.split("\n")) {
+          if (line.startsWith("## ")) {
+            console.log();
+            log(bold(line.slice(3)));
+          } else if (line.startsWith("- ")) {
+            log(`    ${dim(line)}`);
+          } else if (line.trim()) {
+            log(`    ${line}`);
+          }
+        }
+      }
       console.log();
     }
 
     log(dim(`${response.results.length} idea(s) found.`));
 
-    // ── Generate posts from ideas ──────────────────────────────────────
-    if (options.generate) {
-      const vaultPath = config.vaultPath;
+    // ── Ask user if they want to generate posts ────────────────────────
+    const shouldGenerate = options.generate || await askToGenerate();
+    if (!shouldGenerate) return;
 
-      // Load content engine files
-      const engineDir = join(vaultPath, "06_system", "content-engine");
-      const voiceProfile = readIfExists(join(engineDir, "voice-profile.md"));
-      const structures = readIfExists(join(engineDir, "structures.md"));
-      const learnings = readIfExists(join(engineDir, "learnings.md"));
+    const vaultPath = config.vaultPath;
 
-      // Build ideas context
-      const ideasText = response.results.map((page: any) => {
-        const props = page.properties;
-        return [
-          `- Titulo: ${readPropertyValue(props.Titulo)}`,
-          `  Tipo: ${readPropertyValue(props.Tipo)}`,
-          `  Plataforma: ${readPropertyValue(props.Plataforma)}`,
-          `  Resumen: ${readPropertyValue(props.Resumen)}`,
-          `  Angulos: ${readPropertyValue(props["Angulos de Contenido"])}`,
-        ].join("\n");
-      }).join("\n\n");
+    // Load content engine files
+    const engineDir = join(vaultPath, "06_system", "content-engine");
+    const voiceProfile = readIfExists(join(engineDir, "voice-profile.md"));
+    const structures = readIfExists(join(engineDir, "structures.md"));
+    const learnings = readIfExists(join(engineDir, "learnings.md"));
 
-      const prompt = buildPostPrompt(ideasText, voiceProfile, structures, learnings);
+    // Build ideas context with full body
+    const ideasText = pagesWithBody.map(({ page, body }) => {
+      const props = page.properties;
+      const titulo = readPropertyValue(props.Titulo);
+      const plataforma = readPropertyValue(props.Plataforma);
+      return `# ${titulo}\nPlataforma: ${plataforma}\n\n${body}`;
+    }).join("\n\n---\n\n");
 
+    const prompt = buildPostPrompt(ideasText, voiceProfile, structures, learnings);
+
+    console.log();
+
+    // Try gateway first, fall back to claude CLI
+    const apiKey = resolveApiKey();
+    if (apiKey) {
+      const model = resolveModel(options.model);
+      log(bold("Generating posts via gateway..."));
+      log(`Model: ${dim(model)}`);
       console.log();
-
-      // Try gateway first, fall back to claude CLI
-      const apiKey = resolveApiKey();
-      if (apiKey) {
-        const model = resolveModel(options.model);
-        log(bold("Generating posts via gateway..."));
-        log(`Model: ${dim(model)}`);
-        console.log();
-        await streamGatewayResponse(prompt, model, apiKey);
-        console.log();
-      } else if (checkCommand("claude", "Install Claude Code: https://docs.anthropic.com/en/docs/claude-code")) {
-        log(bold("Generating posts via Claude CLI..."));
-        console.log();
-        // Pass prompt via stdin to avoid command line length limits on Windows
-        const env = { ...process.env };
-        delete env.CLAUDECODE;
-        const result = spawnSync(["claude", "-p"], {
-          stdin: new TextEncoder().encode(prompt),
-          stdout: "pipe",
-          stderr: "pipe",
-          env,
-        });
-        if (result.exitCode !== 0) {
-          const errMsg = result.stderr?.toString().trim();
-          error(`Claude CLI exited with an error.${errMsg ? ` ${errMsg}` : ""}`);
-          process.exit(result.exitCode);
-        }
-        const output = result.stdout.toString();
-        console.log(output);
-        console.log();
-      } else {
-        error("No generation method available.");
-        log(`Either set ${dim("AI_GATEWAY_API_KEY")} or install ${dim("claude")} CLI.`);
-        process.exit(1);
+      await streamGatewayResponse(prompt, model, apiKey);
+      console.log();
+    } else if (checkCommand("claude", "Install Claude Code: https://docs.anthropic.com/en/docs/claude-code")) {
+      log(bold("Generating posts via Claude CLI..."));
+      console.log();
+      // Pass prompt via stdin to avoid command line length limits on Windows
+      const env = { ...process.env };
+      delete env.CLAUDECODE;
+      const result = spawnSync(["claude", "-p"], {
+        stdin: new TextEncoder().encode(prompt),
+        stdout: "pipe",
+        stderr: "pipe",
+        env,
+      });
+      if (result.exitCode !== 0) {
+        const errMsg = result.stderr?.toString().trim();
+        error(`Claude CLI exited with an error.${errMsg ? ` ${errMsg}` : ""}`);
+        process.exit(result.exitCode);
       }
+      const output = result.stdout.toString();
+      console.log(output);
+      console.log();
+    } else {
+      error("No generation method available.");
+      log(`Either set ${dim("AI_GATEWAY_API_KEY")} or install ${dim("claude")} CLI.`);
+      process.exit(1);
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     error(`Failed to query ideas: ${message}`);
     process.exit(1);
   }
+}
+
+function extractText(richText: any[]): string {
+  return (richText || []).map((t: any) => t.plain_text).join("");
+}
+
+async function readPageBody(client: any, pageId: string): Promise<string> {
+  const lines: string[] = [];
+  let cursor: string | undefined;
+
+  while (true) {
+    const response: any = await client.blocks.children.list({
+      block_id: pageId,
+      start_cursor: cursor,
+      page_size: 100,
+    });
+
+    for (const block of response.results) {
+      const type = block.type;
+      if (type === "heading_1" || type === "heading_2" || type === "heading_3") {
+        lines.push(`## ${extractText(block[type].rich_text)}`);
+      } else if (type === "paragraph") {
+        const text = extractText(block[type].rich_text);
+        if (text) lines.push(text);
+      } else if (type === "bulleted_list_item") {
+        lines.push(`- ${extractText(block[type].rich_text)}`);
+      } else if (type === "numbered_list_item") {
+        lines.push(`- ${extractText(block[type].rich_text)}`);
+      } else if (type === "toggle") {
+        lines.push(`- ${extractText(block[type].rich_text)}`);
+      }
+    }
+
+    if (!response.has_more) break;
+    cursor = response.next_cursor;
+  }
+
+  return lines.join("\n");
+}
+
+async function askToGenerate(): Promise<boolean> {
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  console.log();
+  const answer = await rl.question("  Generate a post from these ideas? (y/N) ");
+  rl.close();
+  return answer.trim().toLowerCase() === "y";
 }
 
 // Properties that identify an ideas database
