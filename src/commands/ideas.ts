@@ -110,6 +110,7 @@ export async function ideas(
 
     const vaultPath = config.vaultPath;
     const date = dateArg || todayISO();
+    const fileSlug = options.week ? `week-${weekRange().start}` : date;
 
     // Fetch page bodies in parallel
     const pagesWithBody = await Promise.all(
@@ -139,7 +140,7 @@ export async function ideas(
     }
 
     // Build markdown content
-    const mdSections: string[] = [`# Ideas — ${date}\n`];
+    const mdSections: string[] = [`# Ideas — ${fileSlug}\n`];
 
     for (const { page, body } of pagesWithBody) {
       const props = page.properties;
@@ -167,10 +168,10 @@ export async function ideas(
     // Write to inbox
     const inboxDir = join(vaultPath, "00_inbox");
     mkdirSync(inboxDir, { recursive: true });
-    const filePath = join(inboxDir, `ideas-${date}.md`);
+    const filePath = join(inboxDir, `ideas-${fileSlug}.md`);
     writeFileSync(filePath, markdown + "\n");
 
-    success(`Saved to ${bold(`00_inbox/ideas-${date}.md`)}`);
+    success(`Saved to ${bold(`00_inbox/ideas-${fileSlug}.md`)}`);
     log(dim(`${response.results.length} idea(s) found.`));
 
     // ── Ask user if they want to generate posts ────────────────────────
@@ -203,7 +204,7 @@ export async function ideas(
       log(`Model: ${dim(model)}`);
       console.log();
       const output = await streamGatewayResponse(prompt, model, apiKey);
-      saveGeneratedPost(vaultPath, date, output);
+      saveGeneratedPost(vaultPath, fileSlug, output);
     } else if (checkCommand("claude", "Install Claude Code: https://docs.anthropic.com/en/docs/claude-code")) {
       log(bold("Generating posts via Claude CLI..."));
       console.log();
@@ -221,7 +222,7 @@ export async function ideas(
         process.exit(result.exitCode ?? 1);
       }
       const output = result.stdout.toString();
-      saveGeneratedPost(vaultPath, date, output);
+      saveGeneratedPost(vaultPath, fileSlug, output);
     } else {
       error("No generation method available.");
       log(`Either set ${dim("AI_GATEWAY_API_KEY")} or install ${dim("claude")} CLI.`);
@@ -277,6 +278,13 @@ async function readPageBody(client: any, pageId: string): Promise<string> {
       } else if (type === "toggle") {
         lines.push(`- ${extractText(block[type].rich_text)}`);
       }
+
+      if (block.has_children && (type === "toggle" || type === "bulleted_list_item" || type === "numbered_list_item")) {
+        const childContent = await readPageBody(client, block.id);
+        if (childContent) {
+          lines.push(childContent.split("\n").map((l: string) => `  ${l}`).join("\n"));
+        }
+      }
     }
 
     if (!response.has_more) break;
@@ -319,34 +327,42 @@ async function detectInfluencersDatabase(client: any): Promise<string | null> {
 }
 
 async function fetchInfluencers(client: any, databaseId: string): Promise<string> {
-  const response: any = await client.databases.query({
-    database_id: databaseId,
-    page_size: 100,
-  });
-
-  if (response.results.length === 0) return "";
-
   const lines: string[] = ["## Healthcare Influencers\n"];
   lines.push("| Nombre | Especialidad | X | LinkedIn | Por qué importa |");
   lines.push("|--------|-------------|---|----------|-----------------|");
 
-  for (const page of response.results) {
-    const p = page.properties;
-    const nombre = p.Nombre?.title?.[0]?.plain_text || "";
-    if (!nombre) continue;
-    const especialidad = p.Especialidad?.select?.name || "";
-    const handleX = p["Handle X"]?.rich_text?.[0]?.plain_text || "";
-    const segX = p["Seguidores X"]?.number || 0;
-    const handleLI = p["Handle LinkedIn"]?.rich_text?.[0]?.plain_text || "";
-    const segLI = p["Seguidores LinkedIn"]?.number || 0;
-    const porque = p["Por que importa"]?.rich_text?.[0]?.plain_text || "";
+  let cursor: string | undefined;
+  let hasResults = false;
 
-    const xCol = handleX ? `${handleX} (${segX.toLocaleString()})` : "—";
-    const liCol = handleLI ? `${handleLI} (${segLI.toLocaleString()})` : "—";
-    lines.push(`| ${nombre} | ${especialidad} | ${xCol} | ${liCol} | ${porque} |`);
+  while (true) {
+    const response: any = await client.databases.query({
+      database_id: databaseId,
+      page_size: 100,
+      start_cursor: cursor,
+    });
+
+    for (const page of response.results) {
+      const p = page.properties;
+      const nombre = p.Nombre?.title?.[0]?.plain_text || "";
+      if (!nombre) continue;
+      const especialidad = p.Especialidad?.select?.name || "";
+      const handleX = p["Handle X"]?.rich_text?.[0]?.plain_text || "";
+      const segX = p["Seguidores X"]?.number || 0;
+      const handleLI = p["Handle LinkedIn"]?.rich_text?.[0]?.plain_text || "";
+      const segLI = p["Seguidores LinkedIn"]?.number || 0;
+      const porque = p["Por que importa"]?.rich_text?.[0]?.plain_text || "";
+
+      const xCol = handleX ? `${handleX} (${segX.toLocaleString()})` : "—";
+      const liCol = handleLI ? `${handleLI} (${segLI.toLocaleString()})` : "—";
+      lines.push(`| ${nombre} | ${especialidad} | ${xCol} | ${liCol} | ${porque} |`);
+      hasResults = true;
+    }
+
+    if (!response.has_more) break;
+    cursor = response.next_cursor;
   }
 
-  return lines.join("\n");
+  return hasResults ? lines.join("\n") : "";
 }
 
 // Properties that identify an ideas database
