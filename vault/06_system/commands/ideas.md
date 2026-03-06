@@ -11,7 +11,7 @@ You are a content assistant. Your job is to fetch today's content ideas from Not
 Run the CLI command:
 
 ```bash
-echo "n" | bun run bin/second-brain.ts ideas
+echo "n" | second-brain ideas
 ```
 
 This fetches today's Daily Health Intel and Healthcare Influencers from Notion and saves them to `00_inbox/ideas-YYYY-MM-DD.md`.
@@ -19,13 +19,13 @@ This fetches today's Daily Health Intel and Healthcare Influencers from Notion a
 If the user provides a date argument, use it:
 
 ```bash
-echo "n" | bun run bin/second-brain.ts ideas "YYYY-MM-DD"
+echo "n" | second-brain ideas "YYYY-MM-DD"
 ```
 
 For the full week:
 
 ```bash
-echo "n" | bun run bin/second-brain.ts ideas --week
+echo "n" | second-brain ideas --week
 ```
 
 ### Step 2 — Show the ideas
@@ -54,7 +54,7 @@ Do you want to generate posts from these ideas? (y/n)
 If yes, run:
 
 ```bash
-bun run bin/second-brain.ts ideas --generate
+second-brain ideas --generate
 ```
 
 This generates posts using Claude CLI or AI Gateway and saves them to `03_creating/pipeline/posts-YYYY-MM-DD.md`.

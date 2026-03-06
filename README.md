@@ -30,21 +30,20 @@ The stack:
 
 ### Prerequisites
 
-- macOS or Linux
+- macOS, Linux, or Windows
 - [Bun](https://bun.sh) installed (`curl -fsSL https://bun.sh/install | bash`)
 - [Obsidian](https://obsidian.md) installed (free, for reading/navigating your vault)
 
 ### Install
 
 ```bash
-bun install -g @arkangelai/second-brain
+git clone https://github.com/arkangelai/second-brain.git
+cd second-brain
+bun install
+bun link
 ```
 
-Or run without installing:
-
-```bash
-bunx @arkangelai/second-brain init
-```
+This installs dependencies and registers `second-brain` as a global command so it works from any directory (including Obsidian's Claude Sidebar).
 
 ### One-command setup
 
@@ -335,6 +334,7 @@ Your vault ships with 4 agent-agnostic commands — prompt files in `06_system/c
 | `/research` | Research a topic with web + vault, create a sourced note |
 | `/resource` | Ingest URL(s) into the vault as formatted notes |
 | `/therapy` | Organize a brain dump into structured, linked notes |
+| `/ideas` | Fetch today's content ideas from Notion and optionally generate posts |
 | `/schedule` | Schedule ready pipeline posts to X/LinkedIn via Post-Bridge |
 
 ### Usage
@@ -370,6 +370,7 @@ Input: https://paulgraham.com/startupideas.html
 | You need fresh external info | `/research` — web + vault, creates a note |
 | You have a URL to save | `/resource` — summarize + ingest |
 | Your head is full of ideas | `/therapy` — brain dump → structured notes |
+| You want today's content ideas | `/ideas` — fetch from Notion, optionally generate posts |
 | Ready posts need scheduling | `/schedule` — schedule to X/LinkedIn via Post-Bridge |
 
 ### Customizing commands
@@ -414,6 +415,7 @@ Second_Brain/
     │   ├── research.md       # /research — web + vault research
     │   ├── resource.md       # /resource — ingest URLs
     │   ├── therapy.md        # /therapy — brain dump → notes
+    │   ├── ideas.md           # /ideas — fetch content ideas from Notion
     │   └── schedule.md       # /schedule — schedule posts to X/LinkedIn
     ├── content-engine/
     │   ├── voice-profile.md  # Your voice, audience, pillars, tone
@@ -842,8 +844,10 @@ The more you use it, the better it gets:
 When we release new templates, structures, or improvements:
 
 ```bash
-# Update the CLI
-bun install -g @arkangelai/second-brain
+cd second-brain
+git pull
+bun install
+bun link
 
 # Pull new templates into your vault (won't overwrite your files)
 second-brain update
