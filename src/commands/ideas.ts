@@ -64,7 +64,7 @@ export async function ideas(
 
   const client = createNotionClient(notionConfig);
 
-  let dbId = (notionConfig as any).ideasDatabaseId;
+  let dbId = notionConfig.ideasDatabaseId;
   if (!dbId) {
     log("Ideas database not configured. Searching Notion...");
     dbId = await detectIdeasDatabase(client);
@@ -120,7 +120,7 @@ export async function ideas(
     );
 
     // Fetch Healthcare Influencers
-    let influencersDatabaseId = (notionConfig as any).influencersDatabaseId;
+    let influencersDatabaseId = notionConfig.influencersDatabaseId;
     if (!influencersDatabaseId) {
       influencersDatabaseId = await detectInfluencersDatabase(client);
       if (influencersDatabaseId) {
@@ -218,7 +218,7 @@ export async function ideas(
       if (result.exitCode !== 0) {
         const errMsg = result.stderr?.toString().trim();
         error(`Claude CLI exited with an error.${errMsg ? ` ${errMsg}` : ""}`);
-        process.exit(result.exitCode);
+        process.exit(result.exitCode ?? 1);
       }
       const output = result.stdout.toString();
       saveGeneratedPost(vaultPath, date, output);
@@ -261,15 +261,19 @@ async function readPageBody(client: any, pageId: string): Promise<string> {
 
     for (const block of response.results) {
       const type = block.type;
-      if (type === "heading_1" || type === "heading_2" || type === "heading_3") {
+      if (type === "heading_1") {
         lines.push(`## ${extractText(block[type].rich_text)}`);
+      } else if (type === "heading_2") {
+        lines.push(`### ${extractText(block[type].rich_text)}`);
+      } else if (type === "heading_3") {
+        lines.push(`#### ${extractText(block[type].rich_text)}`);
       } else if (type === "paragraph") {
         const text = extractText(block[type].rich_text);
         if (text) lines.push(text);
       } else if (type === "bulleted_list_item") {
         lines.push(`- ${extractText(block[type].rich_text)}`);
       } else if (type === "numbered_list_item") {
-        lines.push(`- ${extractText(block[type].rich_text)}`);
+        lines.push(`1. ${extractText(block[type].rich_text)}`);
       } else if (type === "toggle") {
         lines.push(`- ${extractText(block[type].rich_text)}`);
       }

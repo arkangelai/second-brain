@@ -70,7 +70,7 @@ If no, stop here.
 - **No arguments:** Fetch today's ideas
 - **`YYYY-MM-DD`:** Fetch ideas for a specific date
 - **`--week`:** Fetch ideas for the current week
-- **`generate`:** Skip to generation directly
+- **`--generate`:** Skip to generation directly
 
 ---
 
