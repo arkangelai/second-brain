@@ -13,8 +13,16 @@ export interface IdeasOptions {
   model?: string;
 }
 
+function localDateISO(d: Date = new Date()): string {
+  return [
+    d.getFullYear(),
+    String(d.getMonth() + 1).padStart(2, "0"),
+    String(d.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
 function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+  return localDateISO();
 }
 
 function weekRange(): { start: string; end: string } {
@@ -25,8 +33,8 @@ function weekRange(): { start: string; end: string } {
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
   return {
-    start: monday.toISOString().slice(0, 10),
-    end: sunday.toISOString().slice(0, 10),
+    start: localDateISO(monday),
+    end: localDateISO(sunday),
   };
 }
 
@@ -311,16 +319,24 @@ const INFLUENCERS_REQUIRED_PROPERTIES: Record<string, string> = {
 };
 
 async function detectInfluencersDatabase(client: any): Promise<string | null> {
-  const response: any = await client.search({
-    filter: { property: "object", value: "database" },
-  });
+  let cursor: string | undefined;
 
-  for (const db of response.results) {
-    const props = db.properties || {};
-    const matches = Object.entries(INFLUENCERS_REQUIRED_PROPERTIES).every(
-      ([name, type]) => props[name]?.type === type
-    );
-    if (matches) return db.id;
+  while (true) {
+    const response: any = await client.search({
+      filter: { property: "object", value: "database" },
+      start_cursor: cursor,
+    });
+
+    for (const db of response.results) {
+      const props = db.properties || {};
+      const matches = Object.entries(INFLUENCERS_REQUIRED_PROPERTIES).every(
+        ([name, type]) => props[name]?.type === type
+      );
+      if (matches) return db.id;
+    }
+
+    if (!response.has_more) break;
+    cursor = response.next_cursor;
   }
 
   return null;
@@ -352,9 +368,10 @@ async function fetchInfluencers(client: any, databaseId: string): Promise<string
       const segLI = p["Seguidores LinkedIn"]?.number || 0;
       const porque = p["Por que importa"]?.rich_text?.[0]?.plain_text || "";
 
-      const xCol = handleX ? `${handleX} (${segX.toLocaleString()})` : "—";
-      const liCol = handleLI ? `${handleLI} (${segLI.toLocaleString()})` : "—";
-      lines.push(`| ${nombre} | ${especialidad} | ${xCol} | ${liCol} | ${porque} |`);
+      const esc = (s: string) => s.replace(/\|/g, "\\|");
+      const xCol = handleX ? `${esc(handleX)} (${segX.toLocaleString()})` : "—";
+      const liCol = handleLI ? `${esc(handleLI)} (${segLI.toLocaleString()})` : "—";
+      lines.push(`| ${esc(nombre)} | ${esc(especialidad)} | ${xCol} | ${liCol} | ${esc(porque)} |`);
       hasResults = true;
     }
 
@@ -374,16 +391,24 @@ const IDEAS_REQUIRED_PROPERTIES: Record<string, string> = {
 };
 
 async function detectIdeasDatabase(client: any): Promise<string | null> {
-  const response: any = await client.search({
-    filter: { property: "object", value: "database" },
-  });
+  let cursor: string | undefined;
 
-  for (const db of response.results) {
-    const props = db.properties || {};
-    const matches = Object.entries(IDEAS_REQUIRED_PROPERTIES).every(
-      ([name, type]) => props[name]?.type === type
-    );
-    if (matches) return db.id;
+  while (true) {
+    const response: any = await client.search({
+      filter: { property: "object", value: "database" },
+      start_cursor: cursor,
+    });
+
+    for (const db of response.results) {
+      const props = db.properties || {};
+      const matches = Object.entries(IDEAS_REQUIRED_PROPERTIES).every(
+        ([name, type]) => props[name]?.type === type
+      );
+      if (matches) return db.id;
+    }
+
+    if (!response.has_more) break;
+    cursor = response.next_cursor;
   }
 
   return null;
