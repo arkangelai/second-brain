@@ -33,7 +33,11 @@ echo "n" | second-brain ideas --week
 Read and display the saved file to the user:
 
 ```
+# For today / specific date:
 Read 00_inbox/ideas-YYYY-MM-DD.md
+
+# For --week:
+Read 00_inbox/ideas-week-YYYY-MM-DD.md   (where YYYY-MM-DD is the Monday of the week)
 ```
 
 Show ALL the content — do NOT summarize. The user needs to see:
@@ -51,13 +55,20 @@ Ask the user:
 Do you want to generate posts from these ideas? (y/n)
 ```
 
-If yes, run:
+If yes, re-run the same command from Step 1 but add `--generate`. Always preserve the original date/week arguments:
 
 ```bash
+# If Step 1 was plain today:
 second-brain ideas --generate
+
+# If Step 1 used --week:
+second-brain ideas --week --generate
+
+# If Step 1 used a specific date:
+second-brain ideas "YYYY-MM-DD" --generate
 ```
 
-This generates posts using Claude CLI or AI Gateway and saves them to `03_creating/pipeline/posts-YYYY-MM-DD.md`.
+This generates posts using Claude CLI or AI Gateway and saves them to `03_creating/pipeline/`.
 
 Then read and display the generated posts to the user.
 
@@ -70,7 +81,7 @@ If no, stop here.
 - **No arguments:** Fetch today's ideas
 - **`YYYY-MM-DD`:** Fetch ideas for a specific date
 - **`--week`:** Fetch ideas for the current week
-- **`--generate`:** Skip to generation directly
+- **`--generate`:** Fetch ideas and automatically generate posts (skips the interactive prompt)
 
 ---
 

@@ -287,7 +287,7 @@ async function readPageBody(client: any, pageId: string): Promise<string> {
         lines.push(`- ${extractText(block[type].rich_text)}`);
       }
 
-      if (block.has_children && (type === "toggle" || type === "bulleted_list_item" || type === "numbered_list_item")) {
+      if (block.has_children) {
         const childContent = await readPageBody(client, block.id);
         if (childContent) {
           lines.push(childContent.split("\n").map((l: string) => `  ${l}`).join("\n"));
