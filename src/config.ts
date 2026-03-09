@@ -18,6 +18,8 @@ export interface Config {
 
 export interface NotionConfig {
   databaseId: string;
+  ideasDatabaseId?: string;
+  influencersDatabaseId?: string;
   auth: string;
   defaults?: Record<string, string>;
   propertyMap: PropertyMapping[];

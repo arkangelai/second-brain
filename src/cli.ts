@@ -8,6 +8,7 @@ import { create } from "./commands/create.ts";
 import { draft } from "./commands/draft.ts";
 import { publish } from "./commands/publish.ts";
 import { pull } from "./commands/pull.ts";
+import { ideas } from "./commands/ideas.ts";
 import { configCmd } from "./commands/config-cmd.ts";
 
 const VERSION = "0.1.0";
@@ -31,6 +32,10 @@ const HELP = `
     publish setup              Guided Notion integration setup
     pull                       Pull Notion metrics into published local posts
     pull "file.md"             Pull metrics for a specific post
+    ideas                      Show content ideas from Notion for today
+    ideas "YYYY-MM-DD"         Show ideas for a specific date
+    ideas --week               Show ideas for this week
+    ideas --generate           Show ideas + generate posts via AI gateway
     config <set|get> ...       Manage local second-brain config
 
   ${bold("Options:")}
@@ -59,6 +64,8 @@ export async function run(argv: string[]): Promise<void> {
       "dry-run": { type: "boolean" },
       force: { type: "boolean" },
       all: { type: "boolean" },
+      week: { type: "boolean" },
+      generate: { type: "boolean" },
       version: { type: "boolean", short: "v" },
       help: { type: "boolean", short: "h" },
     },
@@ -135,6 +142,18 @@ export async function run(argv: string[]): Promise<void> {
         positionals[1],
         {
           dryRun: Boolean(values["dry-run"]),
+        },
+        vaultFlag
+      );
+      break;
+
+    case "ideas":
+      await ideas(
+        positionals[1],
+        {
+          week: Boolean(values.week),
+          generate: Boolean(values.generate),
+          model: values.model as string | undefined,
         },
         vaultFlag
       );
