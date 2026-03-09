@@ -166,11 +166,15 @@ export async function ideas(
       const fecha = props.Fecha?.date?.start || "";
       const tipo = readPropertyValue(props.Tipo);
       const plataforma = readPropertyValue(props.Plataforma);
+      const resumen = readPropertyValue(props.Resumen);
+      const angulos = readPropertyValue(props["Angulos de Contenido"]);
 
       mdSections.push(`## ${titulo}`);
       mdSections.push(`**Fecha:** ${fecha}  `);
       mdSections.push(`**Tipo:** ${tipo}  `);
       mdSections.push(`**Plataforma:** ${plataforma}\n`);
+      if (resumen) mdSections.push(`**Resumen:** ${resumen}\n`);
+      if (angulos) mdSections.push(`**Ángulos de Contenido:** ${angulos}\n`);
 
       if (body) mdSections.push(body);
       mdSections.push("");
@@ -207,7 +211,12 @@ export async function ideas(
       const props = page.properties;
       const titulo = readPropertyValue(props.Titulo);
       const plataforma = readPropertyValue(props.Plataforma);
-      return `# ${titulo}\nPlataforma: ${plataforma}\n\n${body}`;
+      const resumen = readPropertyValue(props.Resumen);
+      const angulos = readPropertyValue(props["Angulos de Contenido"]);
+      const meta = [`Plataforma: ${plataforma}`];
+      if (resumen) meta.push(`Resumen: ${resumen}`);
+      if (angulos) meta.push(`Ángulos de Contenido: ${angulos}`);
+      return `# ${titulo}\n${meta.join("\n")}\n\n${body}`;
     }).join("\n\n---\n\n");
 
     const prompt = buildPostPrompt(ideasText, voiceProfile, structures, learnings, influencersMarkdown);
