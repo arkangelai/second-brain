@@ -72,46 +72,56 @@ export async function ideas(
 
   const client = createNotionClient(notionConfig);
 
-  let dbId = notionConfig.ideasDatabaseId;
-  if (!dbId) {
-    log("Ideas database not configured. Searching Notion...");
-    dbId = await detectIdeasDatabase(client);
-    if (!dbId) {
-      error("Could not find an ideas database in your Notion workspace.");
-      log("Make sure your integration has access to a database with these properties:");
-      log(`  ${dim("Fecha (date), Tipo (select), Resumen (rich_text), Angulos de Contenido (rich_text)")}`);
-      process.exit(1);
-    }
-    // Save so we don't search again next time
-    saveConfig({
-      integrations: {
-        ...config.integrations,
-        notion: { ...notionConfig, ideasDatabaseId: dbId },
-      },
-    });
-    success(`Ideas database detected and saved: ${dim(dbId)}`);
-    console.log();
-  }
-  const filter = buildDateFilter(dateArg, Boolean(options.week));
-
-  console.log();
-  log(bold("Second Brain — Ideas"));
-  if (options.week) {
-    const { start, end } = weekRange();
-    log(`Period: ${dim(`${start} → ${end}`)}`);
-  } else {
-    log(`Date: ${dim(dateArg || todayISO())}`);
-  }
-  console.log();
-
   try {
-    const response: any = await client.databases.query({
-      database_id: dbId,
-      filter: filter as any,
-      sorts: [{ property: "Fecha", direction: "ascending" }],
-    });
+    let dbId = notionConfig.ideasDatabaseId;
+    if (!dbId) {
+      log("Ideas database not configured. Searching Notion...");
+      dbId = await detectIdeasDatabase(client);
+      if (!dbId) {
+        error("Could not find an ideas database in your Notion workspace.");
+        log("Make sure your integration has access to a database with these properties:");
+        log(`  ${dim("Fecha (date), Tipo (select), Resumen (rich_text), Angulos de Contenido (rich_text)")}`);
+        process.exit(1);
+      }
+      // Save so we don't search again next time
+      saveConfig({
+        integrations: {
+          ...config.integrations,
+          notion: { ...notionConfig, ideasDatabaseId: dbId },
+        },
+      });
+      success(`Ideas database detected and saved: ${dim(dbId)}`);
+      console.log();
+    }
+    const filter = buildDateFilter(dateArg, Boolean(options.week));
 
-    if (response.results.length === 0) {
+    console.log();
+    log(bold("Second Brain — Ideas"));
+    if (options.week) {
+      const { start, end } = weekRange();
+      log(`Period: ${dim(`${start} → ${end}`)}`);
+    } else {
+      log(`Date: ${dim(dateArg || todayISO())}`);
+    }
+    console.log();
+
+    const allResults: any[] = [];
+    let queryCursor: string | undefined;
+
+    while (true) {
+      const response: any = await client.databases.query({
+        database_id: dbId,
+        filter: filter as any,
+        sorts: [{ property: "Fecha", direction: "ascending" }],
+        page_size: 100,
+        start_cursor: queryCursor,
+      });
+      allResults.push(...response.results);
+      if (!response.has_more) break;
+      queryCursor = response.next_cursor;
+    }
+
+    if (allResults.length === 0) {
       warn("No ideas found for this date.");
       return;
     }
@@ -122,7 +132,7 @@ export async function ideas(
 
     // Fetch page bodies in parallel
     const pagesWithBody = await Promise.all(
-      response.results.map(async (page: any) => ({
+      allResults.map(async (page: any) => ({
         page,
         body: await readPageBody(client, page.id),
       }))
@@ -180,7 +190,7 @@ export async function ideas(
     writeFileSync(filePath, markdown + "\n");
 
     success(`Saved to ${bold(`00_inbox/ideas-${fileSlug}.md`)}`);
-    log(dim(`${response.results.length} idea(s) found.`));
+    log(dim(`${allResults.length} idea(s) found.`));
 
     // ── Ask user if they want to generate posts ────────────────────────
     const shouldGenerate = options.generate || await askToGenerate();
