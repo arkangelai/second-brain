@@ -318,7 +318,7 @@ const INFLUENCERS_REQUIRED_PROPERTIES: Record<string, string> = {
   "Handle LinkedIn": "rich_text",
 };
 
-async function detectInfluencersDatabase(client: any): Promise<string | null> {
+async function detectInfluencersDatabase(client: any): Promise<string | undefined> {
   let cursor: string | undefined;
 
   while (true) {
@@ -339,7 +339,7 @@ async function detectInfluencersDatabase(client: any): Promise<string | null> {
     cursor = response.next_cursor;
   }
 
-  return null;
+  return undefined;
 }
 
 async function fetchInfluencers(client: any, databaseId: string): Promise<string> {
@@ -390,7 +390,7 @@ const IDEAS_REQUIRED_PROPERTIES: Record<string, string> = {
   "Angulos de Contenido": "rich_text",
 };
 
-async function detectIdeasDatabase(client: any): Promise<string | null> {
+async function detectIdeasDatabase(client: any): Promise<string | undefined> {
   let cursor: string | undefined;
 
   while (true) {
@@ -411,7 +411,7 @@ async function detectIdeasDatabase(client: any): Promise<string | null> {
     cursor = response.next_cursor;
   }
 
-  return null;
+  return undefined;
 }
 
 function readIfExists(path: string): string {
