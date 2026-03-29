@@ -16,7 +16,7 @@ Second Brain is a local-first, AI-native knowledge management CLI built around m
 - `bin/`: CLI entrypoints
 - `src/`: implementation code
 - `tools/`: helper tooling
-- `vault/`: sample or working markdown content
+- `vault/`: knowledge vault; see `vault/AGENTS.md` for vault-specific operating guidance
 
 ## Common Commands
 
