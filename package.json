@@ -39,7 +39,7 @@
     "@notionhq/client": "^2.2.0"
   },
   "devDependencies": {
-    "typescript": "^5.9.0",
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "typescript": "^6.0.0"
   }
 }
