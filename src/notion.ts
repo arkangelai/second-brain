@@ -156,6 +156,41 @@ export function createNotionClient(config: NotionConfig): Client {
   return new Client({ auth: config.auth });
 }
 
+const dataSourceIdCache = new Map<string, string>();
+
+/**
+ * Resolve a stored id to a data source id. Accepts either a database id (the
+ * legacy shape stored in configs) or a data source id (what newer detection
+ * code saves). For databases, returns the first data source's id; the Notion
+ * 2025-09-03 API splits the old single-source `database_id` into a container
+ * database + one or more data sources, and `dataSources.query` requires the
+ * latter.
+ */
+export async function resolveDataSourceId(
+  client: Client,
+  id: string
+): Promise<string> {
+  const cached = dataSourceIdCache.get(id);
+  if (cached) return cached;
+
+  try {
+    const db: any = await callNotion(() =>
+      client.databases.retrieve({ database_id: id })
+    );
+    const sources: Array<{ id: string }> = db?.data_sources ?? [];
+    if (sources.length > 0) {
+      const dsId = sources[0].id;
+      dataSourceIdCache.set(id, dsId);
+      return dsId;
+    }
+  } catch {
+    // id is likely already a data source id; fall through.
+  }
+
+  dataSourceIdCache.set(id, id);
+  return id;
+}
+
 export function buildProperties(
   post: ParsedPost,
   filename: string,
@@ -238,13 +273,14 @@ async function listDatabasePages(
   client: Client,
   databaseId: string
 ): Promise<any[]> {
+  const dataSourceId = await resolveDataSourceId(client, databaseId);
   const pages: any[] = [];
   let cursor: string | undefined;
 
   while (true) {
     const response: any = await callNotion(() =>
-      client.databases.query({
-        database_id: databaseId,
+      client.dataSources.query({
+        data_source_id: dataSourceId,
         start_cursor: cursor,
         page_size: 100,
       } as any)
@@ -268,6 +304,8 @@ export async function findPageByFilename(
   filename: string,
   filenameProperty = "Filename"
 ): Promise<any | null> {
+  const dataSourceId = await resolveDataSourceId(client, dbId);
+
   for (const key of ["rich_text", "title"] as const) {
     try {
       const query: any =
@@ -276,8 +314,8 @@ export async function findPageByFilename(
           : { property: filenameProperty, title: { equals: filename } };
 
       const response: any = await callNotion(() =>
-        client.databases.query({
-          database_id: dbId,
+        client.dataSources.query({
+          data_source_id: dataSourceId,
           filter: query,
           page_size: 1,
         } as any)
@@ -410,12 +448,13 @@ export async function readDatabaseSchema(
   client: Client,
   dbId: string
 ): Promise<Record<string, { type: string }>> {
-  const database: any = await callNotion(() =>
-    client.databases.retrieve({ database_id: dbId })
+  const dataSourceId = await resolveDataSourceId(client, dbId);
+  const dataSource: any = await callNotion(() =>
+    client.dataSources.retrieve({ data_source_id: dataSourceId })
   );
 
   const schema: Record<string, { type: string }> = {};
-  for (const [name, config] of Object.entries(database.properties || {})) {
+  for (const [name, config] of Object.entries(dataSource.properties || {})) {
     schema[name] = { type: (config as any).type };
   }
 
