@@ -1,0 +1,42 @@
+{
+  "name": "@second-brain/cli",
+  "version": "0.1.0",
+  "description": "A local-first, AI-native knowledge management CLI. Markdown files + semantic search + any AI agent.",
+  "type": "module",
+  "bin": {
+    "second-brain": "bin/second-brain.ts"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "vault/"
+  ],
+  "engines": {
+    "bun": ">=1.0.0"
+  },
+  "scripts": {
+    "dev": "bun --watch run bin/second-brain.ts",
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "second-brain",
+    "knowledge-management",
+    "cli",
+    "obsidian",
+    "qmd",
+    "ai",
+    "markdown"
+  ],
+  "author": "Arkangel AI",
+  "license": "MIT",
+  "dependencies": {
+    "@notionhq/client": "^2.2.0",
+    "@second-brain/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.13",
+    "typescript": "^6.0.3"
+  }
+}
