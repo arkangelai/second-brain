@@ -3,7 +3,7 @@ import { join } from "path";
 import { spawnSync } from "bun";
 import { createInterface } from "readline/promises";
 import { resolveConfig, resolveApiKey, resolveModel, saveConfig } from "../config.ts";
-import { createNotionClient, readPropertyValue } from "../notion.ts";
+import { createNotionClient, readPropertyValue, resolveDataSourceId } from "../notion.ts";
 import { streamGatewayResponse } from "../gateway.ts";
 import { bold, dim, error, log, success, warn, checkCommand } from "../utils.ts";
 
@@ -105,12 +105,13 @@ export async function ideas(
     }
     console.log();
 
+    const ideasDataSourceId = await resolveDataSourceId(client, dbId);
     const allResults: any[] = [];
     let queryCursor: string | undefined;
 
     while (true) {
-      const response: any = await client.databases.query({
-        database_id: dbId,
+      const response: any = await client.dataSources.query({
+        data_source_id: ideasDataSourceId,
         filter: filter as any,
         sorts: [{ property: "Fecha", direction: "ascending" }],
         page_size: 100,
@@ -342,16 +343,16 @@ async function detectInfluencersDatabase(client: any): Promise<string | undefine
 
   while (true) {
     const response: any = await client.search({
-      filter: { property: "object", value: "database" },
+      filter: { property: "object", value: "data_source" },
       start_cursor: cursor,
     });
 
-    for (const db of response.results) {
-      const props = db.properties || {};
+    for (const ds of response.results) {
+      const props = ds.properties || {};
       const matches = Object.entries(INFLUENCERS_REQUIRED_PROPERTIES).every(
         ([name, type]) => props[name]?.type === type
       );
-      if (matches) return db.id;
+      if (matches) return ds.id;
     }
 
     if (!response.has_more) break;
@@ -366,12 +367,13 @@ async function fetchInfluencers(client: any, databaseId: string): Promise<string
   lines.push("| Nombre | Especialidad | X | LinkedIn | Por qué importa |");
   lines.push("|--------|-------------|---|----------|-----------------|");
 
+  const dataSourceId = await resolveDataSourceId(client, databaseId);
   let cursor: string | undefined;
   let hasResults = false;
 
   while (true) {
-    const response: any = await client.databases.query({
-      database_id: databaseId,
+    const response: any = await client.dataSources.query({
+      data_source_id: dataSourceId,
       page_size: 100,
       start_cursor: cursor,
     });
@@ -414,16 +416,16 @@ async function detectIdeasDatabase(client: any): Promise<string | undefined> {
 
   while (true) {
     const response: any = await client.search({
-      filter: { property: "object", value: "database" },
+      filter: { property: "object", value: "data_source" },
       start_cursor: cursor,
     });
 
-    for (const db of response.results) {
-      const props = db.properties || {};
+    for (const ds of response.results) {
+      const props = ds.properties || {};
       const matches = Object.entries(IDEAS_REQUIRED_PROPERTIES).every(
         ([name, type]) => props[name]?.type === type
       );
-      if (matches) return db.id;
+      if (matches) return ds.id;
     }
 
     if (!response.has_more) break;
