@@ -34,7 +34,7 @@ const publicSchema = z
     (env) => !looksLikeServiceRoleKey(env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
     {
       message:
-        "NEXT_PUBLIC_SUPABASE_ANON_KEY decodes to a service_role JWT — never expose the service role key to the browser. Use the anon/public key instead.",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY looks like a Supabase secret key (service_role JWT or sb_secret_*) — never expose it to the browser. Use the anon/publishable key instead.",
       path: ["NEXT_PUBLIC_SUPABASE_ANON_KEY"],
     }
   );
@@ -43,15 +43,21 @@ export type ServerEnv = z.infer<typeof serverSchema>;
 export type PublicEnv = z.infer<typeof publicSchema>;
 
 /**
- * Detect Supabase service-role JWTs.
+ * Detect Supabase secret keys that must never reach the browser.
  *
- * Service-role keys are JWTs (eyJ... prefix) whose payload carries
- * `"role":"service_role"`. The anon key carries `"role":"anon"`. We decode the
- * payload (no signature check needed — we just inspect the claim) so a
- * misconfigured deploy that pastes the service-role key into `NEXT_PUBLIC_*`
- * fails loudly instead of leaking it to every browser.
+ * Covers both supported key formats:
+ *   - Legacy JWT keys (`eyJ...`) whose payload carries `"role":"service_role"`.
+ *     The anon key carries `"role":"anon"`. We decode the payload (no signature
+ *     check needed — we just inspect the claim).
+ *   - 2025+ API keys: `sb_secret_...` is the secret key, `sb_publishable_...`
+ *     is the browser-safe one.
+ *
+ * A misconfigured deploy that pastes a secret key into `NEXT_PUBLIC_*` fails
+ * loudly here instead of leaking it to every browser.
  */
 function looksLikeServiceRoleKey(value: string): boolean {
+  if (value.startsWith("sb_secret_")) return true;
+
   if (!value.startsWith("eyJ")) return false;
 
   const parts = value.split(".");
@@ -130,10 +136,19 @@ const emptyServerEnv = (): ServerEnv =>
  * Browser-safe env. Validated at module import so misconfigurations surface
  * at boot. Set `SKIP_ENV_VALIDATION=1` in build steps or test harnesses that
  * need to import the parser functions without triggering validation.
+ *
+ * NOTE: each `NEXT_PUBLIC_*` is referenced statically by name. Next.js only
+ * inlines `process.env.NEXT_PUBLIC_*` into the browser bundle via static
+ * substitution — passing `process.env` as a whole object would yield `{}`
+ * in the browser and fail validation on every page load.
  */
 export const publicEnv: PublicEnv = shouldSkipValidation
   ? ({} as PublicEnv)
-  : parsePublicEnv();
+  : parsePublicEnv({
+      NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
+    });
 
 /**
  * Server-only env. Importing this module on the client never validates the

@@ -81,11 +81,29 @@ describe("parsePublicEnv", () => {
         ...validPublic,
         NEXT_PUBLIC_SUPABASE_ANON_KEY: serviceRoleJwt,
       })
-    ).toThrow(/service_role/);
+    ).toThrow(/secret key/);
+  });
+
+  it("blocks an sb_secret_* key from appearing in NEXT_PUBLIC_SUPABASE_ANON_KEY", () => {
+    expect(() =>
+      parsePublicEnv({
+        ...validPublic,
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: "sb_secret_abc123",
+      })
+    ).toThrow(/secret key/);
   });
 
   it("accepts an anon JWT in NEXT_PUBLIC_SUPABASE_ANON_KEY", () => {
     expect(() => parsePublicEnv(validPublic)).not.toThrow();
+  });
+
+  it("accepts an sb_publishable_* key in NEXT_PUBLIC_SUPABASE_ANON_KEY", () => {
+    expect(() =>
+      parsePublicEnv({
+        ...validPublic,
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: "sb_publishable_abc123",
+      })
+    ).not.toThrow();
   });
 
   it("lists every missing var in a single error", () => {
