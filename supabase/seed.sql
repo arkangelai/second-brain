@@ -68,17 +68,26 @@ insert into public.user_profiles (user_id, full_name)
 values ('00000000-0000-0000-0000-000000000001', 'Dev User')
 on conflict (user_id) do nothing;
 
--- Team. The teams_owner_membership trigger will auto-insert the owner row
--- into team_members, so no separate insert is required for that.
-insert into public.teams (id, slug, name, owner_user_id, plan)
+-- Team. The teams_owner_membership trigger no-ops when auth.uid() is
+-- NULL (as during seeding), so we insert the owner membership row
+-- explicitly here.
+insert into public.teams (id, slug, name, plan)
 values (
   '00000000-0000-0000-0000-0000000000a1',
   'dev',
   'Dev Team',
-  '00000000-0000-0000-0000-000000000001',
   'free'
 )
 on conflict (id) do nothing;
+
+insert into public.team_members (team_id, user_id, role, invited_by)
+values (
+  '00000000-0000-0000-0000-0000000000a1',
+  '00000000-0000-0000-0000-000000000001',
+  'owner',
+  '00000000-0000-0000-0000-000000000001'
+)
+on conflict (team_id, user_id) do nothing;
 
 update public.user_profiles
    set default_team_id = '00000000-0000-0000-0000-0000000000a1'
