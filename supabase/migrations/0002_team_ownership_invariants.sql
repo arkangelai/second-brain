@@ -67,7 +67,9 @@ drop function if exists public.prevent_last_owner_removal();
 -- Refuse to commit a transaction that would leave any team with zero
 -- owner-membership rows, so the owner-only RLS policies
 -- (teams_update_owner / teams_delete_owner) can never become
--- permanently inaccessible.
+-- permanently inaccessible. The same invariant is also checked after
+-- INSERT on teams, which covers service-role / superuser creation paths
+-- where handle_new_team() no-ops because auth.uid() is NULL.
 --
 -- Implemented as DEFERRABLE INITIALLY DEFERRED so:
 --
@@ -89,24 +91,29 @@ drop function if exists public.prevent_last_owner_removal();
 --      from row locks, so it cannot interleave with the FK cascade
 --      path used by DELETE FROM teams.
 --
+-- Service-role creation case: callers without auth.uid() may insert a
+-- team and its explicit owner membership in the same transaction. The
+-- teams-level constraint trigger is deferred, so that valid sequence can
+-- commit while an ownerless team insert cannot.
+--
 -- Cascade case: when a team is deleted, the FK cascade removes its
 -- team_members rows and the deferred trigger still fires for each of
 -- them. We detect this by checking that the team row no longer exists
 -- (the current transaction has already deleted it) and skip — the
 -- invariant does not apply to a team that no longer exists.
-create or replace function public.enforce_team_has_owner()
-returns trigger
+--
+-- RLS case: invariant checks must run as SECURITY DEFINER functions.
+-- Otherwise RLS can make an existing team look absent after the final
+-- visible owner membership row is removed, causing a false cascade skip.
+create or replace function public.assert_team_has_owner(team uuid)
+returns void
 language plpgsql
+security definer
 set search_path = public, pg_temp
 as $$
 declare
-  team uuid := coalesce(new.team_id, old.team_id);
   owner_count int;
 begin
-  if not exists (select 1 from public.teams where id = team) then
-    return null;
-  end if;
-
   perform pg_advisory_xact_lock(
     hashtextextended('team_members_owner_lock:' || team::text, 0)
   );
@@ -119,12 +126,55 @@ begin
     raise exception 'team % must retain at least one owner', team
       using errcode = 'check_violation';
   end if;
+end;
+$$;
+
+create or replace function public.enforce_team_has_owner()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  team uuid := coalesce(new.team_id, old.team_id);
+begin
+  if not exists (select 1 from public.teams where id = team) then
+    return null;
+  end if;
+
+  perform public.assert_team_has_owner(team);
 
   return null;
 end;
 $$;
 
+create or replace function public.enforce_new_team_has_owner()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if not exists (select 1 from public.teams where id = new.id) then
+    return null;
+  end if;
+
+  perform public.assert_team_has_owner(new.id);
+
+  return null;
+end;
+$$;
+
+create constraint trigger teams_enforce_owner_invariant
+after insert on public.teams
+deferrable initially deferred
+for each row execute function public.enforce_new_team_has_owner();
+
 create constraint trigger team_members_enforce_owner_invariant
 after update or delete on public.team_members
 deferrable initially deferred
 for each row execute function public.enforce_team_has_owner();
+
+revoke execute on function public.assert_team_has_owner(uuid) from public;
+revoke execute on function public.enforce_team_has_owner() from public;
+revoke execute on function public.enforce_new_team_has_owner() from public;

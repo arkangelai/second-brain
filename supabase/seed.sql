@@ -69,24 +69,27 @@ values ('00000000-0000-0000-0000-000000000001', 'Dev User')
 on conflict (user_id) do nothing;
 
 -- Team. The teams_owner_membership trigger no-ops when auth.uid() is
--- NULL (as during seeding), so we insert the owner membership row
--- explicitly here.
-insert into public.teams (id, slug, name, plan)
-values (
-  '00000000-0000-0000-0000-0000000000a1',
-  'dev',
-  'Dev Team',
-  'free'
+-- NULL (as during seeding), so the team and explicit owner membership
+-- are inserted in one statement. That satisfies the deferred
+-- teams_enforce_owner_invariant trigger even when the seed runner
+-- autocommits each statement.
+with upsert_team as (
+  insert into public.teams (id, slug, name, plan)
+  values (
+    '00000000-0000-0000-0000-0000000000a1',
+    'dev',
+    'Dev Team',
+    'free'
+  )
+  on conflict (id) do nothing
+  returning id
 )
-on conflict (id) do nothing;
-
 insert into public.team_members (team_id, user_id, role, invited_by)
-values (
-  '00000000-0000-0000-0000-0000000000a1',
+select
+  coalesce((select id from upsert_team), '00000000-0000-0000-0000-0000000000a1'::uuid),
   '00000000-0000-0000-0000-000000000001',
   'owner',
   '00000000-0000-0000-0000-000000000001'
-)
 on conflict (team_id, user_id) do nothing;
 
 update public.user_profiles
