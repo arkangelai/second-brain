@@ -194,9 +194,16 @@ for each row execute function public.handle_new_team();
 -- Concurrency: a plain count(*) is not enough — two transactions could
 -- each demote/delete a different owner row, both observe
 -- remaining_owners > 0, and both commit, leaving the team with zero
--- owners. We serialize all owner-management for a team by taking a
--- FOR UPDATE lock on the team's row before counting, so concurrent
--- owner-touching transactions queue one-at-a-time per team.
+-- owners. We serialize all owner-management for a team with a
+-- transaction-scoped advisory lock keyed on the team uuid.
+--
+-- We use pg_advisory_xact_lock rather than SELECT … FOR UPDATE on the
+-- teams row on purpose: this trigger already holds a row lock on
+-- team_members, and a concurrent DELETE FROM teams locks teams first
+-- and then cascades into team_members. Taking the teams row lock here
+-- would invert that order and cause deadlocks. Advisory locks live in
+-- a separate lock space, so they cannot conflict with the FK cascade's
+-- row locks.
 --
 -- We also skip the check when fired as part of a cascade
 -- (pg_trigger_depth() > 1, e.g. delete on teams cascading to
@@ -222,8 +229,11 @@ begin
     return case when tg_op = 'DELETE' then old else new end;
   end if;
 
-  -- Serialize concurrent owner-management on this team.
-  perform 1 from public.teams where id = old.team_id for update;
+  -- Serialize concurrent owner-management on this team via an advisory
+  -- lock keyed on team_id. Released automatically at transaction end.
+  perform pg_advisory_xact_lock(
+    hashtextextended('team_members_owner_lock:' || old.team_id::text, 0)
+  );
 
   select count(*) into remaining_owners
   from public.team_members
