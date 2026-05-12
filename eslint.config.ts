@@ -31,6 +31,37 @@ export default tseslint.config(
     },
   },
   {
+    files: [
+      "apps/web/src/app/**/page.{ts,tsx}",
+      "apps/web/src/app/**/layout.{ts,tsx}",
+      "apps/web/src/app/**/template.{ts,tsx}",
+      "apps/web/src/app/**/loading.{ts,tsx}",
+      "apps/web/src/app/**/error.{ts,tsx}",
+      "apps/web/src/app/**/not-found.{ts,tsx}",
+    ],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@/lib/supabase/admin",
+              message:
+                "Service-role Supabase clients are restricted to Route Handlers and must not be imported by React Server Components.",
+            },
+          ],
+          patterns: [
+            {
+              group: ["**/lib/supabase/admin"],
+              message:
+                "Service-role Supabase clients are restricted to Route Handlers and must not be imported by React Server Components.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["**/*.{js,mjs,cjs}"],
     languageOptions: {
       ecmaVersion: "latest",

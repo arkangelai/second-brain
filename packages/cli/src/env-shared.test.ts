@@ -1,20 +1,18 @@
 import { describe, expect, it } from "bun:test";
-import {
-  parsePublicEnv,
-  parseServerEnv,
-} from "@second-brain/shared/env";
+import { parsePublicEnv, parseServerEnv } from "@second-brain/shared/env";
 
 const validServer = {
   SUPABASE_SECRET_KEY: "sb_secret_abc123",
+  SUPABASE_DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:54322/postgres",
   AI_GATEWAY_API_KEY: "gw_abc",
   RESEND_API_KEY: "re_abc",
   APP_URL: "https://second-brain.example.com",
   EMAIL_FROM: "noreply@example.com",
 };
 
-const anonJwtPayload = Buffer.from(
-  JSON.stringify({ role: "anon", iss: "supabase" })
-).toString("base64url");
+const anonJwtPayload = Buffer.from(JSON.stringify({ role: "anon", iss: "supabase" })).toString(
+  "base64url"
+);
 const anonJwt = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${anonJwtPayload}.signature`;
 
 const serviceRoleJwtPayload = Buffer.from(
@@ -42,6 +40,7 @@ describe("parseServerEnv", () => {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       expect(message).toContain("SUPABASE_SECRET_KEY");
+      expect(message).toContain("SUPABASE_DATABASE_URL");
       expect(message).toContain("AI_GATEWAY_API_KEY");
       expect(message).toContain("RESEND_API_KEY");
       expect(message).toContain("APP_URL");
@@ -51,15 +50,13 @@ describe("parseServerEnv", () => {
   });
 
   it("rejects an invalid APP_URL", () => {
-    expect(() =>
-      parseServerEnv({ ...validServer, APP_URL: "not-a-url" })
-    ).toThrow(/APP_URL/);
+    expect(() => parseServerEnv({ ...validServer, APP_URL: "not-a-url" })).toThrow(/APP_URL/);
   });
 
   it("rejects an invalid EMAIL_FROM", () => {
-    expect(() =>
-      parseServerEnv({ ...validServer, EMAIL_FROM: "not-an-email" })
-    ).toThrow(/EMAIL_FROM/);
+    expect(() => parseServerEnv({ ...validServer, EMAIL_FROM: "not-an-email" })).toThrow(
+      /EMAIL_FROM/
+    );
   });
 });
 
@@ -70,9 +67,9 @@ describe("parsePublicEnv", () => {
   });
 
   it("rejects a non-URL NEXT_PUBLIC_SUPABASE_URL", () => {
-    expect(() =>
-      parsePublicEnv({ ...validPublic, NEXT_PUBLIC_SUPABASE_URL: "broken" })
-    ).toThrow(/NEXT_PUBLIC_SUPABASE_URL/);
+    expect(() => parsePublicEnv({ ...validPublic, NEXT_PUBLIC_SUPABASE_URL: "broken" })).toThrow(
+      /NEXT_PUBLIC_SUPABASE_URL/
+    );
   });
 
   it("blocks a service-role JWT from appearing in NEXT_PUBLIC_SUPABASE_ANON_KEY", () => {
