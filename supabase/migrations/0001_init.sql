@@ -187,6 +187,42 @@ create trigger teams_owner_membership
 after insert on public.teams
 for each row execute function public.handle_new_team();
 
+-- Refuse to remove or demote the last owner of a team so owner-only
+-- actions (teams_update_owner / teams_delete_owner) can never become
+-- permanently inaccessible.
+create or replace function public.prevent_last_owner_removal()
+returns trigger
+language plpgsql
+set search_path = public, pg_temp
+as $$
+declare
+  remaining_owners int;
+begin
+  if old.role = 'owner'
+     and (tg_op = 'DELETE' or new.role is distinct from 'owner') then
+    select count(*) into remaining_owners
+    from public.team_members
+    where team_id = old.team_id
+      and role = 'owner'
+      and user_id <> old.user_id;
+
+    if remaining_owners = 0 then
+      raise exception 'team % must retain at least one owner', old.team_id
+        using errcode = 'check_violation';
+    end if;
+  end if;
+
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger team_members_protect_last_owner
+before update or delete on public.team_members
+for each row execute function public.prevent_last_owner_removal();
+
 -- ---------------------------------------------------------------------------
 -- Row-Level Security
 -- ---------------------------------------------------------------------------
@@ -261,22 +297,61 @@ using (
   or team_id = public.app_current_team()
 );
 
--- Admins of the active team manage memberships.
+-- Admins of the active team manage memberships, but they cannot touch
+-- owner rows or promote anyone (including themselves) to owner. Promotion
+-- to / demotion from 'owner' is reserved for existing owners. A BEFORE
+-- trigger further guarantees the team always has at least one owner.
 create policy team_members_insert_admin
 on public.team_members for insert
 to authenticated
-with check (team_id = public.app_current_team() and public.app_is_team_admin());
+with check (
+  team_id = public.app_current_team()
+  and public.app_is_team_admin()
+  and role <> 'owner'
+);
 
 create policy team_members_update_admin
 on public.team_members for update
 to authenticated
-using (team_id = public.app_current_team() and public.app_is_team_admin())
-with check (team_id = public.app_current_team() and public.app_is_team_admin());
+using (
+  team_id = public.app_current_team()
+  and public.app_is_team_admin()
+  and role <> 'owner'
+)
+with check (
+  team_id = public.app_current_team()
+  and public.app_is_team_admin()
+  and role <> 'owner'
+);
 
 create policy team_members_delete_admin
 on public.team_members for delete
 to authenticated
-using (team_id = public.app_current_team() and public.app_is_team_admin());
+using (
+  team_id = public.app_current_team()
+  and public.app_is_team_admin()
+  and role <> 'owner'
+);
+
+-- Owners get unrestricted membership management for their team, including
+-- promoting members to owner and demoting other owners. The
+-- team_members_protect_last_owner trigger prevents removing the final
+-- owner so a team can never be left without one.
+create policy team_members_insert_owner
+on public.team_members for insert
+to authenticated
+with check (team_id = public.app_current_team() and public.app_is_team_owner());
+
+create policy team_members_update_owner
+on public.team_members for update
+to authenticated
+using (team_id = public.app_current_team() and public.app_is_team_owner())
+with check (team_id = public.app_current_team() and public.app_is_team_owner());
+
+create policy team_members_delete_owner
+on public.team_members for delete
+to authenticated
+using (team_id = public.app_current_team() and public.app_is_team_owner());
 
 -- team_invitations ----------------------------------------------------------
 create policy team_invitations_select_admin
