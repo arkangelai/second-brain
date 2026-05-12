@@ -190,6 +190,18 @@ for each row execute function public.handle_new_team();
 -- Refuse to remove or demote the last owner of a team so owner-only
 -- actions (teams_update_owner / teams_delete_owner) can never become
 -- permanently inaccessible.
+--
+-- Concurrency: a plain count(*) is not enough — two transactions could
+-- each demote/delete a different owner row, both observe
+-- remaining_owners > 0, and both commit, leaving the team with zero
+-- owners. We serialize all owner-management for a team by taking a
+-- FOR UPDATE lock on the team's row before counting, so concurrent
+-- owner-touching transactions queue one-at-a-time per team.
+--
+-- We also skip the check when fired as part of a cascade
+-- (pg_trigger_depth() > 1, e.g. delete on teams cascading to
+-- team_members): the team itself is going away, so the invariant
+-- "team has at least one owner" no longer applies.
 create or replace function public.prevent_last_owner_removal()
 returns trigger
 language plpgsql
@@ -198,24 +210,33 @@ as $$
 declare
   remaining_owners int;
 begin
-  if old.role = 'owner'
-     and (tg_op = 'DELETE' or new.role is distinct from 'owner') then
-    select count(*) into remaining_owners
-    from public.team_members
-    where team_id = old.team_id
-      and role = 'owner'
-      and user_id <> old.user_id;
-
-    if remaining_owners = 0 then
-      raise exception 'team % must retain at least one owner', old.team_id
-        using errcode = 'check_violation';
-    end if;
+  -- Only care when an existing owner row is removed or demoted.
+  if old.role <> 'owner' then
+    return case when tg_op = 'DELETE' then old else new end;
+  end if;
+  if tg_op = 'UPDATE' and new.role = 'owner' then
+    return new;
   end if;
 
-  if tg_op = 'DELETE' then
-    return old;
+  if pg_trigger_depth() > 1 then
+    return case when tg_op = 'DELETE' then old else new end;
   end if;
-  return new;
+
+  -- Serialize concurrent owner-management on this team.
+  perform 1 from public.teams where id = old.team_id for update;
+
+  select count(*) into remaining_owners
+  from public.team_members
+  where team_id = old.team_id
+    and role = 'owner'
+    and user_id <> old.user_id;
+
+  if remaining_owners = 0 then
+    raise exception 'team % must retain at least one owner', old.team_id
+      using errcode = 'check_violation';
+  end if;
+
+  return case when tg_op = 'DELETE' then old else new end;
 end;
 $$;
 
