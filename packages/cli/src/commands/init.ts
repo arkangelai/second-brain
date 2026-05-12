@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync } from "fs";
+import { existsSync, mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
 import {
   log,
@@ -81,7 +81,7 @@ export function init(vaultFlag?: string): void {
   if (!existsSync(qmdConfigFile)) {
     mkdirSync(qmdConfigDir, { recursive: true });
     const config = `collections:\n  second-brain:\n    path: ${vaultPath}\n    pattern: "**/*.md"\n`;
-    require("fs").writeFileSync(qmdConfigFile, config);
+    writeFileSync(qmdConfigFile, config);
     success("QMD config created");
   } else {
     success("QMD config already exists");
