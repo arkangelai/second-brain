@@ -52,15 +52,22 @@ so the CLI and web app have something to talk to immediately.
 ### RLS quick reference
 
 Team-scoped tables are guarded by `app_current_team()`, which reads the
-`app.team_id` GUC. Set it at the start of every request after the user
-authenticates:
+`app.team_id` GUC. `app_set_team()` sets it as a **transaction-local**
+setting, so it must be called inside the same transaction as the queries
+that depend on it. This prevents the team context from leaking across
+pooled connections (Supavisor transaction mode, PgBouncer, etc.).
 
 ```sql
+begin;
 select public.app_set_team('<team-uuid>');
+-- ... team-scoped queries here ...
+commit;
 ```
 
-`app_set_team()` verifies that the calling user (`auth.uid()`) is a member
-of the target team before flipping the GUC. Helper predicates:
+For PostgREST clients (supabase-js), put both the `app_set_team` call and
+the dependent query inside a single RPC function so they share a
+transaction. `app_set_team()` verifies that the calling user (`auth.uid()`)
+is a member of the target team before flipping the GUC. Helper predicates:
 
 | Function | Returns |
 | --- | --- |

@@ -91,9 +91,15 @@ as $$
   select nullif(current_setting('app.team_id', true), '')::uuid
 $$;
 
--- Sets the active team for this session after verifying the caller is
--- a member of that team. SECURITY DEFINER so the membership check bypasses
--- the RLS policy on team_members (which itself depends on app.team_id).
+-- Sets the active team for the current transaction after verifying the
+-- caller is a member of that team. SECURITY DEFINER so the membership check
+-- bypasses the RLS policy on team_members (which itself depends on
+-- app.team_id).
+--
+-- The GUC is set with is_local=true so it is scoped to the current
+-- transaction and cannot leak across pooled connections (Supavisor in
+-- transaction mode, PgBouncer, etc.). Callers must therefore wrap
+-- app_set_team() and the queries that depend on it in a single transaction.
 create or replace function public.app_set_team(team uuid)
 returns uuid
 language plpgsql
@@ -114,7 +120,7 @@ begin
     raise exception 'app_set_team: user % is not a member of team %', uid, team;
   end if;
 
-  perform set_config('app.team_id', team::text, false);
+  perform set_config('app.team_id', team::text, true);
   return team;
 end;
 $$;
