@@ -11,8 +11,10 @@ Next.js 16 (App Router) front-end for the second-brain monorepo.
 ## Local Supabase stack
 
 The repo ships a Supabase project at `supabase/` with the base multi-tenant
-schema (`teams`, `user_profiles`, `team_members`, `team_invitations`, `agents`)
-and Row-Level Security enabled on every table.
+schema (`teams`, `user_profiles`, `team_members`, `team_invitations`,
+`team_member_api_keys`) and Row-Level Security enabled on every table. Humans
+and agents are both rows in `team_members`; `member_type` identifies whether a
+member is `human` or `agent`.
 
 ### Start the stack
 
@@ -28,7 +30,7 @@ into `apps/web/.env.local`:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key from `supabase start`>
-SUPABASE_SERVICE_ROLE_KEY=<service-role key from `supabase start`>
+SUPABASE_SECRET_KEY=<service-role key from `supabase start`>
 ```
 
 ### Reset the database
@@ -46,8 +48,9 @@ as the seeded dev user:
 - email: `dev@second-brain.local`
 - password: `devpassword`
 
-The seed also creates a dev team (`slug = "dev"`) and a dev agent (`name = "dev-cli"`)
-so the CLI and web app have something to talk to immediately.
+The seed also creates a dev team (`slug = "dev"`) and a dev agent membership
+(`member_type = "agent"`, `display_name = "dev-cli"`) so the CLI and web app
+have something to talk to immediately.
 
 ### RLS quick reference
 
@@ -76,6 +79,10 @@ is a member of the target team before flipping the GUC. Helper predicates:
 | `app_is_team_owner()` | `true` if `auth.uid()` is `owner` of active team |
 
 User-scoped tables (`user_profiles`) are guarded directly by `auth.uid()`.
+
+Team member API keys are stored in `team_member_api_keys`, linked to
+`team_members` by `(team_id, member_id)`. This lets either a human member or an
+agent member have multiple independently revocable keys for rotation.
 
 ## Web app
 

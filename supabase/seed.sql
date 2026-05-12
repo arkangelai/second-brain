@@ -1,7 +1,8 @@
 -- seed.sql
 -- LOCAL DEVELOPMENT ONLY. Never run against a remote Supabase project.
--- Provides a known dev user, team, membership, and agent so the app and CLI
--- can run end-to-end without manual setup after `supabase db reset`.
+-- Provides a known dev user, team, human membership, and agent membership so
+-- the app and CLI can run end-to-end without manual setup after
+-- `supabase db reset`.
 
 -- Stable IDs make it easy to reference these rows from app/CLI code in dev.
 -- dev user        : 00000000-0000-0000-0000-000000000001
@@ -84,33 +85,50 @@ with upsert_team as (
   on conflict (id) do nothing
   returning id
 )
-insert into public.team_members (team_id, user_id, role, invited_by)
+insert into public.team_members (
+  team_id,
+  member_id,
+  member_type,
+  user_id,
+  role,
+  invited_by
+)
 select
   coalesce((select id from upsert_team), '00000000-0000-0000-0000-0000000000a1'::uuid),
   '00000000-0000-0000-0000-000000000001',
+  'human',
+  '00000000-0000-0000-0000-000000000001',
   'owner',
   '00000000-0000-0000-0000-000000000001'
-on conflict (team_id, user_id) do nothing;
+on conflict (team_id, member_id) do nothing;
 
 update public.user_profiles
    set default_team_id = '00000000-0000-0000-0000-0000000000a1'
  where user_id = '00000000-0000-0000-0000-000000000001';
 
--- Dev agent. api_key_hash is left null; [1.2] introduces argon2id hashing
--- in app code and will populate this column when an agent key is minted.
-insert into public.agents (
-  id,
+-- Dev agent. Agents are team_members with member_type='agent'. API keys live
+-- in team_member_api_keys and are created only when a key is minted.
+insert into public.team_members (
   team_id,
-  name,
+  member_id,
+  member_type,
+  user_id,
+  role,
+  invited_by,
+  display_name,
   scopes,
   created_by_user_id,
   active
 ) values (
-  '00000000-0000-0000-0000-0000000000c1',
   '00000000-0000-0000-0000-0000000000a1',
+  '00000000-0000-0000-0000-0000000000c1',
+  'agent',
+  null,
+  'member',
+  '00000000-0000-0000-0000-000000000001',
   'dev-cli',
   '["read","write"]'::jsonb,
   '00000000-0000-0000-0000-000000000001',
   true
 )
-on conflict (id) do nothing;
+on conflict (team_id, member_id) do nothing;
