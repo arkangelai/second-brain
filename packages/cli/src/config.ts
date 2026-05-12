@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
+import { parseCliEnv } from "./env.ts";
 
 const CONFIG_DIR = join(homedir(), ".config", "second-brain");
 const CONFIG_FILE = join(CONFIG_DIR, "config.json");
@@ -99,7 +100,9 @@ export function loadConfig(): Config {
 }
 
 /**
- * Resolve env references like "$NOTION_API_TOKEN".
+ * Resolve env references like "$NOTION_API_TOKEN" embedded in user-supplied
+ * config files. The variable name is dynamic and chosen by the user — this
+ * is intentionally outside the Zod-validated schema in env.ts.
  */
 export function resolveEnvValue(value?: string): string {
   if (!value) return "";
@@ -118,9 +121,9 @@ export function resolveEnvValue(value?: string): string {
  */
 export function resolveConfig(flagValue?: string): ResolvedConfig {
   const stored = readStoredConfig();
+  const env = parseCliEnv();
 
-  const envPath = process.env.SECOND_BRAIN_PATH;
-  const vaultPath = resolvePath(flagValue || envPath || stored.vaultPath || DEFAULT_VAULT);
+  const vaultPath = resolvePath(flagValue || env.vaultPath || stored.vaultPath || DEFAULT_VAULT);
 
   const notion = stored.integrations?.notion
     ? {
@@ -180,7 +183,7 @@ export function saveConfig(configOrVaultPath: Partial<Config> | string): void {
 }
 
 export function resolveApiKey(): string | undefined {
-  const envKey = cleanString(process.env.AI_GATEWAY_API_KEY);
+  const envKey = parseCliEnv().aiGatewayApiKey;
   if (envKey) return envKey;
 
   return loadConfig().aiGatewayApiKey;

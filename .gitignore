@@ -37,3 +37,5 @@ packages/cli/tools/post-bridge/.post-bridge.json
 *.swp
 *.swo
 *~
+.vercel
+.env*.local

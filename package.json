@@ -18,7 +18,8 @@
     "build": "bun run --filter='./apps/*' build",
     "test": "bun run --filter='./packages/*' test",
     "typecheck": "bun run --filter='*' typecheck",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "check:env": "bun run scripts/check-env.ts"
   },
   "keywords": [
     "second-brain",
