@@ -18,6 +18,9 @@ dist/
 out/
 .turbo/
 
+# TypeScript incremental cache
+*.tsbuildinfo
+
 # Bun
 bun.lockb
 
