@@ -5,7 +5,7 @@ import {
 } from "@second-brain/shared/env";
 
 const validServer = {
-  SUPABASE_SERVICE_ROLE_KEY: "service-role-key",
+  SUPABASE_SECRET_KEY: "sb_secret_abc123",
   AI_GATEWAY_API_KEY: "gw_abc",
   RESEND_API_KEY: "re_abc",
   APP_URL: "https://second-brain.example.com",
@@ -41,7 +41,7 @@ describe("parseServerEnv", () => {
       throw new Error("expected parseServerEnv to throw");
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      expect(message).toContain("SUPABASE_SERVICE_ROLE_KEY");
+      expect(message).toContain("SUPABASE_SECRET_KEY");
       expect(message).toContain("AI_GATEWAY_API_KEY");
       expect(message).toContain("RESEND_API_KEY");
       expect(message).toContain("APP_URL");

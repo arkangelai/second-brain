@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 const serverSchema = z.object({
-  SUPABASE_SERVICE_ROLE_KEY: z
+  SUPABASE_SECRET_KEY: z
     .string()
-    .min(1, "must be set (Supabase project settings → API → service_role key)"),
+    .min(1, "must be set (Supabase project settings → API Keys → Secret keys, sb_secret_...)"),
   AI_GATEWAY_API_KEY: z
     .string()
     .min(1, "must be set (Vercel dashboard → AI Gateway → API keys)"),
