@@ -136,13 +136,19 @@ security definer
 set search_path = public, pg_temp
 as $$
 declare
-  team uuid := coalesce(new.team_id, old.team_id);
+  old_team uuid := old.team_id;
+  new_team uuid := case when tg_op = 'UPDATE' then new.team_id else null end;
 begin
-  if not exists (select 1 from public.teams where id = team) then
-    return null;
+  if old_team is not null
+     and exists (select 1 from public.teams where id = old_team) then
+    perform public.assert_team_has_owner(old_team);
   end if;
 
-  perform public.assert_team_has_owner(team);
+  if new_team is not null
+     and new_team is distinct from old_team
+     and exists (select 1 from public.teams where id = new_team) then
+    perform public.assert_team_has_owner(new_team);
+  end if;
 
   return null;
 end;
