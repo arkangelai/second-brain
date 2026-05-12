@@ -13,6 +13,17 @@ Thumbs.db
 node_modules/
 dist/
 
+# Next.js
+.next/
+out/
+.turbo/
+
+# TypeScript incremental cache
+*.tsbuildinfo
+
+# Bun
+bun.lockb
+
 # Draft prompts
 .draft-prompt.md
 
@@ -20,7 +31,7 @@ dist/
 .config/
 
 # Post-Bridge runtime cache
-tools/post-bridge/.post-bridge.json
+packages/cli/tools/post-bridge/.post-bridge.json
 
 # Editor
 *.swp
