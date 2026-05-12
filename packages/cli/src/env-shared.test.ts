@@ -38,9 +38,33 @@ describe("parseServerEnv", () => {
   it("allows Resend to be unset for dev email logging", () => {
     const { RESEND_API_KEY: _resend, ...withoutResend } = validServer;
 
-    const env = parseServerEnv(withoutResend);
+    const env = parseServerEnv({ ...withoutResend, NODE_ENV: "development" });
 
     expect(env.RESEND_API_KEY).toBeUndefined();
+  });
+
+  it("allows Resend to be unset for preview deployments", () => {
+    const { RESEND_API_KEY: _resend, ...withoutResend } = validServer;
+
+    const env = parseServerEnv({
+      ...withoutResend,
+      NODE_ENV: "production",
+      VERCEL_ENV: "preview",
+    });
+
+    expect(env.RESEND_API_KEY).toBeUndefined();
+  });
+
+  it("requires Resend for production deployments", () => {
+    const { RESEND_API_KEY: _resend, ...withoutResend } = validServer;
+
+    expect(() =>
+      parseServerEnv({
+        ...withoutResend,
+        NODE_ENV: "production",
+        VERCEL_ENV: "production",
+      })
+    ).toThrow(/RESEND_API_KEY/);
   });
 
   it("lists every missing var in a single error", () => {
@@ -73,6 +97,14 @@ describe("parseServerEnv", () => {
 describe("parsePublicEnv", () => {
   it("parses a fully populated public env", () => {
     const env = parsePublicEnv(validPublic);
+    expect(env.NEXT_PUBLIC_APP_NAME).toBe("Second Brain");
+  });
+
+  it("defaults the public app name when missing", () => {
+    const { NEXT_PUBLIC_APP_NAME: _appName, ...withoutAppName } = validPublic;
+
+    const env = parsePublicEnv(withoutAppName);
+
     expect(env.NEXT_PUBLIC_APP_NAME).toBe("Second Brain");
   });
 
@@ -121,7 +153,6 @@ describe("parsePublicEnv", () => {
       const message = err instanceof Error ? err.message : String(err);
       expect(message).toContain("NEXT_PUBLIC_SUPABASE_URL");
       expect(message).toContain("NEXT_PUBLIC_SUPABASE_ANON_KEY");
-      expect(message).toContain("NEXT_PUBLIC_APP_NAME");
     }
   });
 });

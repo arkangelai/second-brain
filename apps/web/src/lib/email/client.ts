@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Resend } from "resend";
-import { serverEnv } from "@second-brain/shared/env";
+import { requiresResendApiKey, serverEnv } from "@second-brain/shared/env";
 
 interface SendEmailInput {
   to: string | string[];
@@ -20,6 +20,10 @@ let resend: Resend | null = null;
 
 export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult> {
   if (!serverEnv.RESEND_API_KEY) {
+    if (requiresResendApiKey(serverEnv)) {
+      throw new Error("RESEND_API_KEY must be set for production email delivery");
+    }
+
     console.info("[email:dev]", {
       to: input.to,
       from: serverEnv.EMAIL_FROM,

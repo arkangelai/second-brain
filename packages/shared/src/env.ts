@@ -5,28 +5,53 @@ const optionalNonEmptyString = z.preprocess(
   z.string().min(1).optional()
 );
 
-const serverSchema = z.object({
-  SUPABASE_SECRET_KEY: z
-    .string()
-    .min(1, "must be set (Supabase project settings → API Keys → Secret keys, sb_secret_...)"),
-  AI_GATEWAY_API_KEY: z
-    .string()
-    .min(1, "must be set (Vercel dashboard → AI Gateway → API keys)"),
-  RESEND_API_KEY: optionalNonEmptyString,
-  APP_URL: z
-    .string()
-    .url("must be a valid URL (e.g. https://second-brain.example.com)"),
-  EMAIL_FROM: z
-    .string()
-    .email("must be a valid email address (e.g. noreply@example.com)"),
-  EMAIL_REPLY_TO: z.preprocess(
-    (value) => (value === "" ? undefined : value),
-    z
+const nodeEnvSchema = z.preprocess(
+  (value) => (value === "" ? undefined : value),
+  z.enum(["development", "test", "production"]).optional()
+);
+
+const vercelEnvSchema = z.preprocess(
+  (value) => (value === "" ? undefined : value),
+  z.enum(["development", "preview", "production"]).optional()
+);
+
+const serverSchema = z
+  .object({
+    SUPABASE_SECRET_KEY: z
       .string()
-      .email("must be a valid email address (e.g. support@example.com)")
-      .optional()
-  ),
-});
+      .min(
+        1,
+        "must be set (Supabase project settings → API Keys → Secret keys, sb_secret_...)"
+      ),
+    AI_GATEWAY_API_KEY: z
+      .string()
+      .min(1, "must be set (Vercel dashboard → AI Gateway → API keys)"),
+    RESEND_API_KEY: optionalNonEmptyString,
+    APP_URL: z
+      .string()
+      .url("must be a valid URL (e.g. https://second-brain.example.com)"),
+    EMAIL_FROM: z
+      .string()
+      .email("must be a valid email address (e.g. noreply@example.com)"),
+    EMAIL_REPLY_TO: z.preprocess(
+      (value) => (value === "" ? undefined : value),
+      z
+        .string()
+        .email("must be a valid email address (e.g. support@example.com)")
+        .optional()
+    ),
+    NODE_ENV: nodeEnvSchema,
+    VERCEL_ENV: vercelEnvSchema,
+  })
+  .superRefine((env, ctx) => {
+    if (requiresResendApiKey(env) && !env.RESEND_API_KEY) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["RESEND_API_KEY"],
+        message: "must be set for production email delivery",
+      });
+    }
+  });
 
 const publicSchema = z
   .object({
@@ -36,9 +61,10 @@ const publicSchema = z
     NEXT_PUBLIC_SUPABASE_ANON_KEY: z
       .string()
       .min(1, "must be set (Supabase project settings → API → anon/public key)"),
-    NEXT_PUBLIC_APP_NAME: z
-      .string()
-      .min(1, "must be set (display name shown in the UI)"),
+    NEXT_PUBLIC_APP_NAME: z.preprocess(
+      (value) => (value === "" ? undefined : value),
+      z.string().min(1).default("Second Brain")
+    ),
   })
   .refine(
     (env) => !looksLikeServiceRoleKey(env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
@@ -51,6 +77,17 @@ const publicSchema = z
 
 export type ServerEnv = z.infer<typeof serverSchema>;
 export type PublicEnv = z.infer<typeof publicSchema>;
+
+export function requiresResendApiKey(env: {
+  NODE_ENV?: string;
+  VERCEL_ENV?: string;
+}): boolean {
+  if (env.VERCEL_ENV) {
+    return env.VERCEL_ENV === "production";
+  }
+
+  return env.NODE_ENV === "production";
+}
 
 /**
  * Detect Supabase secret keys that must never reach the browser.
