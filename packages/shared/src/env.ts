@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+const optionalNonEmptyString = z.preprocess(
+  (value) => (value === "" ? undefined : value),
+  z.string().min(1).optional()
+);
+
 const serverSchema = z.object({
   SUPABASE_SECRET_KEY: z
     .string()
@@ -7,15 +12,20 @@ const serverSchema = z.object({
   AI_GATEWAY_API_KEY: z
     .string()
     .min(1, "must be set (Vercel dashboard → AI Gateway → API keys)"),
-  RESEND_API_KEY: z
-    .string()
-    .min(1, "must be set (resend.com → API Keys)"),
+  RESEND_API_KEY: optionalNonEmptyString,
   APP_URL: z
     .string()
     .url("must be a valid URL (e.g. https://second-brain.example.com)"),
   EMAIL_FROM: z
     .string()
     .email("must be a valid email address (e.g. noreply@example.com)"),
+  EMAIL_REPLY_TO: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z
+      .string()
+      .email("must be a valid email address (e.g. support@example.com)")
+      .optional()
+  ),
 });
 
 const publicSchema = z

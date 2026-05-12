@@ -35,6 +35,14 @@ describe("parseServerEnv", () => {
     expect(env.EMAIL_FROM).toBe(validServer.EMAIL_FROM);
   });
 
+  it("allows Resend to be unset for dev email logging", () => {
+    const { RESEND_API_KEY: _resend, ...withoutResend } = validServer;
+
+    const env = parseServerEnv(withoutResend);
+
+    expect(env.RESEND_API_KEY).toBeUndefined();
+  });
+
   it("lists every missing var in a single error", () => {
     try {
       parseServerEnv({});
@@ -43,7 +51,6 @@ describe("parseServerEnv", () => {
       const message = err instanceof Error ? err.message : String(err);
       expect(message).toContain("SUPABASE_SECRET_KEY");
       expect(message).toContain("AI_GATEWAY_API_KEY");
-      expect(message).toContain("RESEND_API_KEY");
       expect(message).toContain("APP_URL");
       expect(message).toContain("EMAIL_FROM");
       expect(message).toContain(".env.example");
