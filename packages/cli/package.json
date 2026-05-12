@@ -33,7 +33,8 @@
   "license": "MIT",
   "dependencies": {
     "@notionhq/client": "^5.21.0",
-    "@second-brain/shared": "workspace:*"
+    "@second-brain/shared": "workspace:*",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/bun": "^1.3.13",
