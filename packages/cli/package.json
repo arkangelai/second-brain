@@ -32,7 +32,7 @@
   "author": "Arkangel AI",
   "license": "MIT",
   "dependencies": {
-    "@notionhq/client": "^2.2.0",
+    "@notionhq/client": "^5.21.0",
     "@second-brain/shared": "workspace:*"
   },
   "devDependencies": {
