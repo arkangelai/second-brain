@@ -1,23 +1,40 @@
-import { resolveHumanPrincipal } from "@/lib/auth/human-principal";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
+
+import { TeamAdminClient } from "./team-admin-client";
+import { AdminTeamError, getTeamAdminPageData } from "@/lib/admin/team";
+
+export const metadata: Metadata = {
+  title: "Team Admin | Second Brain",
+};
+
+export const dynamic = "force-dynamic";
 
 export default async function AdminTeamPage() {
-  const principal = await resolveHumanPrincipal({ headers: await headers() });
+  try {
+    const data = await getTeamAdminPageData();
 
-  if (!principal) {
-    redirect("/login?next=/admin/team");
+    return <TeamAdminClient data={data} />;
+  } catch (error) {
+    return <AdminTeamErrorState error={error} />;
   }
+}
+
+function AdminTeamErrorState({ error }: { error: unknown }) {
+  const message =
+    error instanceof AdminTeamError
+      ? error.message
+      : "The team admin page could not be loaded.";
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-6 p-8">
-      <header className="space-y-2">
-        <h1 className="text-3xl font-semibold tracking-tight">Team</h1>
-        <p className="text-sm text-muted-foreground">Team {principal.team_id}</p>
-      </header>
-
-      <section className="rounded-lg border border-border bg-card p-6 text-sm text-card-foreground">
-        <p className="text-muted-foreground">Signed in as {principal.role}.</p>
+    <main className="flex min-h-dvh items-center justify-center bg-background p-6">
+      <section className="w-full max-w-md rounded-lg border border-border bg-card p-6 text-card-foreground shadow-sm">
+        <p className="text-sm font-medium text-muted-foreground">
+          Team admin unavailable
+        </p>
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight">
+          Check your team access
+        </h1>
+        <p className="mt-3 text-sm text-muted-foreground">{message}</p>
       </section>
     </main>
   );
