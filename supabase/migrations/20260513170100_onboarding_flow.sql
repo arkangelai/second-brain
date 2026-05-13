@@ -81,6 +81,19 @@ begin
       using errcode = '22023';
   end if;
 
+  -- First-run onboarding only: refuse if the caller already belongs to a team.
+  if exists (
+    select 1
+      from public.team_members
+     where user_id = uid
+       and member_type = 'human'
+       and active
+       and revoked_at is null
+  ) then
+    raise exception 'app_create_team: user already belongs to a team'
+      using errcode = '42501';
+  end if;
+
   base_slug := public.app_slug_base(coalesce(requested_slug, cleaned_name));
   candidate_slug := base_slug::citext;
 
