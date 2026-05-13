@@ -61,7 +61,17 @@ begin
     invitation.role,
     invitation.invited_by
   )
-  on conflict (team_id, member_id) do nothing;
+  on conflict (team_id, member_id) do update
+     set role = case
+           when public.team_members.role = 'owner'
+            and excluded.role <> 'owner'
+             then public.team_members.role
+           else excluded.role
+         end,
+         invited_by = excluded.invited_by,
+         active = true,
+         revoked_at = null
+   where public.team_members.member_type = 'human';
 
   update public.team_invitations
      set accepted_at = now(),
