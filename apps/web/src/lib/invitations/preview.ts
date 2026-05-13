@@ -2,15 +2,15 @@ import { HttpError } from "@/lib/http/errors";
 import { hashInvitationToken } from "@/lib/invitations/tokens";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
-export type InvitationPreviewStatus = "valid" | "gone";
-
-export interface InvitationPreview {
-  status: InvitationPreviewStatus;
-  email?: string;
-  role?: string;
-  teamName?: string;
-  inviterName?: string;
-}
+export type InvitationPreview =
+  | { status: "gone" }
+  | {
+      status: "valid";
+      email: string;
+      role: string;
+      teamName: string;
+      inviterName: string;
+    };
 
 interface InvitationRow {
   email: string;

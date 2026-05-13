@@ -27,13 +27,16 @@ export default async function AdminTeamPage({
     redirect("/login?next=/admin/team");
   }
 
+  const membershipQuery = () =>
+    supabase
+      .from("team_members")
+      .select("team_id, role")
+      .eq("member_type", "human")
+      .eq("user_id", user.id);
+
   const requestedTeamId = normalizeTeamId(params.team);
   const { data: requestedMembership } = requestedTeamId
-    ? await supabase
-        .from("team_members")
-        .select("team_id, role")
-        .eq("member_type", "human")
-        .eq("user_id", user.id)
+    ? await membershipQuery()
         .eq("team_id", requestedTeamId)
         .maybeSingle<MembershipRow>()
     : { data: null };
@@ -48,11 +51,7 @@ export default async function AdminTeamPage({
 
   const { data: defaultMembership } =
     !requestedMembership && profile?.default_team_id
-      ? await supabase
-          .from("team_members")
-          .select("team_id, role")
-          .eq("member_type", "human")
-          .eq("user_id", user.id)
+      ? await membershipQuery()
           .eq("team_id", profile.default_team_id)
           .maybeSingle<MembershipRow>()
       : { data: null };
@@ -60,11 +59,7 @@ export default async function AdminTeamPage({
   const { data: fallbackMembership } =
     requestedMembership || defaultMembership
       ? { data: null }
-      : await supabase
-          .from("team_members")
-          .select("team_id, role")
-          .eq("member_type", "human")
-          .eq("user_id", user.id)
+      : await membershipQuery()
           .order("joined_at", { ascending: true })
           .order("team_id", { ascending: true })
           .limit(1)
