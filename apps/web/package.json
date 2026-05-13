@@ -24,6 +24,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "resend": "^6.12.3",
+    "sonner": "^2.0.7",
     "tailwind-merge": "^2.5.5",
     "zod": "^4.4.3"
   },

@@ -1,16 +1,17 @@
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { TeamAdminClient } from "./team-admin-client";
+import { AdminTeamError, getTeamAdminPageData } from "@/lib/admin/team";
 
-interface MembershipRow {
-  team_id: string;
-  role: string;
-}
+export const metadata: Metadata = {
+  title: "Team Admin | Second Brain",
+};
+
+export const dynamic = "force-dynamic";
 
 interface AdminTeamPageProps {
   searchParams: Promise<{
     invite?: string;
-    team?: string;
   }>;
 }
 
@@ -18,99 +19,38 @@ export default async function AdminTeamPage({
   searchParams,
 }: AdminTeamPageProps) {
   const params = await searchParams;
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect("/login?next=/admin/team");
-  }
+  try {
+    const data = await getTeamAdminPageData();
 
-  const membershipQuery = () =>
-    supabase
-      .from("team_members")
-      .select("team_id, role")
-      .eq("member_type", "human")
-      .eq("user_id", user.id);
-
-  const requestedTeamId = normalizeTeamId(params.team);
-  const { data: requestedMembership } = requestedTeamId
-    ? await membershipQuery()
-        .eq("team_id", requestedTeamId)
-        .maybeSingle<MembershipRow>()
-    : { data: null };
-
-  const { data: profile } = requestedMembership
-    ? { data: null }
-    : await supabase
-        .from("user_profiles")
-        .select("default_team_id")
-        .eq("user_id", user.id)
-        .maybeSingle<{ default_team_id: string | null }>();
-
-  const { data: defaultMembership } =
-    !requestedMembership && profile?.default_team_id
-      ? await membershipQuery()
-          .eq("team_id", profile.default_team_id)
-          .maybeSingle<MembershipRow>()
-      : { data: null };
-
-  const { data: fallbackMembership } =
-    requestedMembership || defaultMembership
-      ? { data: null }
-      : await membershipQuery()
-          .order("joined_at", { ascending: true })
-          .order("team_id", { ascending: true })
-          .limit(1)
-          .maybeSingle<MembershipRow>();
-
-  const activeMembership =
-    requestedMembership ?? defaultMembership ?? fallbackMembership;
-
-  if (!activeMembership) {
     return (
-      <main className="mx-auto flex min-h-dvh max-w-2xl flex-col justify-center gap-6 px-6 py-12">
-        <h1 className="text-3xl font-semibold tracking-tight">No team found</h1>
-      </main>
+      <TeamAdminClient
+        data={data}
+        inviteAccepted={params.invite === "accepted"}
+      />
     );
+  } catch (error) {
+    return <AdminTeamErrorState error={error} />;
   }
-
-  const { data: team } = await supabase
-    .from("teams")
-    .select("name, slug")
-    .eq("id", activeMembership.team_id)
-    .single<{ name: string; slug: string }>();
-
-  return (
-    <main className="mx-auto flex min-h-dvh max-w-2xl flex-col justify-center gap-6 px-6 py-12">
-      {params.invite === "accepted" ? (
-        <p className="rounded-md border border-border bg-secondary px-4 py-3 text-sm text-secondary-foreground">
-          Invitation accepted.
-        </p>
-      ) : null}
-      <header className="space-y-3">
-        <p className="text-sm font-medium text-muted-foreground">Second Brain</p>
-        <h1 className="text-3xl font-semibold tracking-tight">
-          {team?.name ?? "Team"}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {user.email} · {activeMembership.role}
-        </p>
-      </header>
-    </main>
-  );
 }
 
-function normalizeTeamId(value: string | undefined): string | null {
-  if (
-    !value ||
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      value
-    )
-  ) {
-    return null;
-  }
+function AdminTeamErrorState({ error }: { error: unknown }) {
+  const message =
+    error instanceof AdminTeamError
+      ? error.message
+      : "The team admin page could not be loaded.";
 
-  return value;
+  return (
+    <main className="flex min-h-dvh items-center justify-center bg-background p-6">
+      <section className="w-full max-w-md rounded-lg border border-border bg-card p-6 text-card-foreground shadow-sm">
+        <p className="text-sm font-medium text-muted-foreground">
+          Team admin unavailable
+        </p>
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight">
+          Check your team access
+        </h1>
+        <p className="mt-3 text-sm text-muted-foreground">{message}</p>
+      </section>
+    </main>
+  );
 }
