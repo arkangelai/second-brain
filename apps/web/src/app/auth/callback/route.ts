@@ -2,18 +2,12 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { createRouteHandlerSupabaseClient } from "@/lib/supabase/server";
 
-function safeNextPath(value: string | null): string {
-  if (!value?.startsWith("/") || value.startsWith("//")) {
-    return "/admin/team";
-  }
-
-  return value;
-}
+export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
-  const nextPath = safeNextPath(requestUrl.searchParams.get("next"));
+  const nextPath = normalizeNextPath(requestUrl.searchParams.get("next"));
   let withSupabaseResponseHeaders:
     | (<T extends Response>(response: T) => T)
     | undefined;
@@ -26,15 +20,25 @@ export async function GET(request: NextRequest) {
 
     if (!error) {
       return withSupabaseResponseHeaders(
-        NextResponse.redirect(new URL(nextPath, request.url))
+        NextResponse.redirect(new URL(nextPath, requestUrl.origin))
       );
     }
   }
 
-  const loginUrl = new URL("/login", request.url);
+  const loginUrl = new URL("/login", requestUrl.origin);
   loginUrl.searchParams.set("next", nextPath);
+  loginUrl.searchParams.set("error", "auth_callback_failed");
   const response = NextResponse.redirect(loginUrl);
+
   return withSupabaseResponseHeaders
     ? withSupabaseResponseHeaders(response)
     : response;
+}
+
+function normalizeNextPath(value: string | null): string {
+  if (!value?.startsWith("/") || value.startsWith("//")) {
+    return "/admin/team";
+  }
+
+  return value;
 }

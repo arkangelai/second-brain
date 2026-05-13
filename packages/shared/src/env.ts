@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+const DEFAULT_PUBLIC_APP_NAME = "Second Brain";
+
 const serverSchema = z.object({
   SUPABASE_SECRET_KEY: z
     .string()
@@ -28,7 +30,8 @@ const publicSchema = z
       .min(1, "must be set (Supabase project settings → API → anon/public key)"),
     NEXT_PUBLIC_APP_NAME: z
       .string()
-      .min(1, "must be set (display name shown in the UI)"),
+      .min(1, "must be set (display name shown in the UI)")
+      .default(DEFAULT_PUBLIC_APP_NAME),
   })
   .refine(
     (env) => !looksLikeServiceRoleKey(env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
@@ -132,6 +135,34 @@ const emptyServerEnv = (): ServerEnv =>
     },
   });
 
+let cachedServerEnv: ServerEnv | null = null;
+
+function getServerEnv(): ServerEnv {
+  cachedServerEnv ??= parseServerEnv();
+  return cachedServerEnv;
+}
+
+const lazyServerEnv = (): ServerEnv =>
+  new Proxy({} as ServerEnv, {
+    get(_target, prop) {
+      if (typeof prop === "symbol") return undefined;
+      return getServerEnv()[prop as keyof ServerEnv];
+    },
+    has(_target, prop) {
+      return typeof prop === "string" && prop in getServerEnv();
+    },
+    ownKeys() {
+      return Reflect.ownKeys(getServerEnv());
+    },
+    getOwnPropertyDescriptor(_target, prop) {
+      if (typeof prop !== "string" || !(prop in getServerEnv())) return undefined;
+      return {
+        enumerable: true,
+        configurable: true,
+      };
+    },
+  });
+
 /**
  * Browser-safe env. Validated at module import so misconfigurations surface
  * at boot. Set `SKIP_ENV_VALIDATION=1` in build steps or test harnesses that
@@ -151,12 +182,12 @@ export const publicEnv: PublicEnv = shouldSkipValidation
     });
 
 /**
- * Server-only env. Importing this module on the client never validates the
- * server schema; accessing any property from the client throws to make
- * accidental leakage impossible.
+ * Server-only env. On the server, validation runs when a property is first
+ * read so build-time imports that only need publicEnv do not require secrets.
+ * Client reads still throw to prevent leakage.
  */
 export const serverEnv: ServerEnv = shouldSkipValidation
   ? ({} as ServerEnv)
   : isServer
-    ? parseServerEnv()
+    ? lazyServerEnv()
     : emptyServerEnv();

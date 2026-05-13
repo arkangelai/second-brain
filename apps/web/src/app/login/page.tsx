@@ -1,22 +1,14 @@
-import { LoginForm } from "@/app/login/login-form";
+import { LoginForm } from "./login-form";
 
 type LoginPageProps = {
-  searchParams?: Promise<{
-    next?: string;
+  searchParams: Promise<{
+    next?: string | string[];
   }>;
 };
 
-function safeNextPath(value: string | undefined): string {
-  if (!value?.startsWith("/") || value.startsWith("//")) {
-    return "/admin/team";
-  }
-
-  return value;
-}
-
 export default async function LoginPage({ searchParams }: LoginPageProps) {
-  const params = await searchParams;
-  const nextPath = safeNextPath(params?.next);
+  const { next } = await searchParams;
+  const nextPath = normalizeNextPath(next);
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-6 py-12">
@@ -31,4 +23,14 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       </div>
     </main>
   );
+}
+
+function normalizeNextPath(value: string | string[] | undefined): string {
+  const next = Array.isArray(value) ? value[0] : value;
+
+  if (!next?.startsWith("/") || next.startsWith("//")) {
+    return "/admin/team";
+  }
+
+  return next;
 }

@@ -69,6 +69,15 @@ describe("parsePublicEnv", () => {
     expect(env.NEXT_PUBLIC_APP_NAME).toBe("Second Brain");
   });
 
+  it("defaults NEXT_PUBLIC_APP_NAME when omitted", () => {
+    const env = parsePublicEnv({
+      NEXT_PUBLIC_SUPABASE_URL: validPublic.NEXT_PUBLIC_SUPABASE_URL,
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: validPublic.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    });
+
+    expect(env.NEXT_PUBLIC_APP_NAME).toBe("Second Brain");
+  });
+
   it("rejects a non-URL NEXT_PUBLIC_SUPABASE_URL", () => {
     expect(() =>
       parsePublicEnv({ ...validPublic, NEXT_PUBLIC_SUPABASE_URL: "broken" })
@@ -114,7 +123,6 @@ describe("parsePublicEnv", () => {
       const message = err instanceof Error ? err.message : String(err);
       expect(message).toContain("NEXT_PUBLIC_SUPABASE_URL");
       expect(message).toContain("NEXT_PUBLIC_SUPABASE_ANON_KEY");
-      expect(message).toContain("NEXT_PUBLIC_APP_NAME");
     }
   });
 });

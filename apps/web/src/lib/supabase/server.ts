@@ -1,14 +1,17 @@
+import "server-only";
+
 import { createServerClient } from "@supabase/ssr";
+import { publicEnv } from "@second-brain/shared/env";
 import { cookies } from "next/headers";
 
-import { requireEnv } from "@/lib/env";
+import type { Database } from "./types";
 
 export async function createServerSupabaseClient(responseHeaders?: Headers) {
   const cookieStore = await cookies();
 
-  return createServerClient(
-    requireEnv("NEXT_PUBLIC_SUPABASE_URL"),
-    requireEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
+  return createServerClient<Database>(
+    publicEnv.NEXT_PUBLIC_SUPABASE_URL,
+    publicEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       cookies: {
         getAll() {

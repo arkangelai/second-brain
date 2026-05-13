@@ -14,14 +14,43 @@ export type PendingInvite = {
 };
 
 type SubmitStatus = "idle" | "submitting" | "error";
+type InviteStatus = "loading" | "ready" | "error";
 
-export function OnboardingForm({ invites }: { invites: PendingInvite[] }) {
+export function OnboardingForm() {
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [slugEdited, setSlugEdited] = useState(false);
   const [status, setStatus] = useState<SubmitStatus>("idle");
+  const [inviteStatus, setInviteStatus] = useState<InviteStatus>("loading");
+  const [invites, setInvites] = useState<PendingInvite[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [acceptingInviteId, setAcceptingInviteId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    void fetch("/api/onboarding/invitations")
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error("Could not load invitations.");
+        }
+
+        return (await response.json()) as { invites?: PendingInvite[] };
+      })
+      .then((body) => {
+        if (!active) return;
+        setInvites(body.invites ?? []);
+        setInviteStatus("ready");
+      })
+      .catch(() => {
+        if (!active) return;
+        setInviteStatus("error");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (slugEdited || !name.trim()) return;
@@ -101,7 +130,11 @@ export function OnboardingForm({ invites }: { invites: PendingInvite[] }) {
           <h2 className="text-base font-semibold">Pending invitations</h2>
         </div>
 
-        {invites.length > 0 ? (
+        {inviteStatus === "loading" ? (
+          <p className="text-sm text-muted-foreground">Loading invitations...</p>
+        ) : inviteStatus === "error" ? (
+          <p className="text-sm text-destructive">Could not load invitations.</p>
+        ) : invites.length > 0 ? (
           <div className="divide-y divide-border">
             {invites.map((invite) => (
               <div key={invite.id} className="flex items-center justify-between gap-4 py-4">
