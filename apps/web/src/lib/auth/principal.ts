@@ -1,11 +1,11 @@
 import "server-only";
 
-import argon2 from "argon2";
+import { AgentScopesSchema, type AgentScopes } from "@second-brain/shared";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { Json, TeamRole } from "@/lib/supabase/types";
 
-import { getBearerToken, parseAgentApiKey, type ParsedAgentApiKey } from "./api-key";
+import { parseAgentKey, verifyKey, type ParsedAgentKey } from "./agentKeys";
 import {
   resolveHumanPrincipal,
   type HumanPrincipal,
@@ -17,7 +17,7 @@ export type AgentPrincipal = {
   id: string;
   team_id: string;
   role: Exclude<TeamRole, "owner">;
-  scopes: string[];
+  scopes: AgentScopes;
 };
 
 export type Principal = HumanPrincipal | AgentPrincipal;
@@ -36,8 +36,8 @@ type ApiKeyRow = {
 export async function resolveRequestPrincipal(
   request: HumanPrincipalRequest
 ): Promise<Principal | null> {
-  const bearerToken = getBearerToken(request.headers.get("authorization"));
-  const parsedAgentKey = bearerToken ? parseAgentApiKey(bearerToken) : null;
+  const token = extractBearerToken(request.headers.get("authorization"));
+  const parsedAgentKey = token ? parseAgentKey(token) : null;
 
   if (parsedAgentKey) {
     return resolveAgentPrincipal(parsedAgentKey);
@@ -47,7 +47,7 @@ export async function resolveRequestPrincipal(
 }
 
 async function resolveAgentPrincipal(
-  parsed: ParsedAgentApiKey
+  parsed: ParsedAgentKey
 ): Promise<AgentPrincipal | null> {
   const admin = createSupabaseAdminClient({ routeHandler: true });
   const { data: team } = await admin
@@ -64,13 +64,13 @@ async function resolveAgentPrincipal(
       "id, team_id, member_id, key_prefix, key_hash, scopes, expires_at, revoked_at"
     )
     .eq("team_id", team.id)
-    .eq("key_prefix", parsed.keyPrefix)
+    .eq("key_prefix", parsed.prefix)
     .is("revoked_at", null)
     .maybeSingle();
 
   if (error || !key) return null;
 
-  if (!(await verifyAgentKey(key, parsed.secret))) return null;
+  if (!(await verifyAgentKey(key, parsed.plaintext))) return null;
 
   const { data: member } = await admin
     .from("team_members")
@@ -89,27 +89,43 @@ async function resolveAgentPrincipal(
     .update({ last_used_at: new Date().toISOString() })
     .eq("id", key.id);
 
+  const scopes = normalizeScopes(key.scopes, member.scopes);
+  if (!scopes) return null;
+
   return {
     kind: "agent",
     id: member.member_id,
     team_id: member.team_id,
     role: member.role,
-    scopes: normalizeScopes(key.scopes, member.scopes),
+    scopes,
   };
 }
 
-async function verifyAgentKey(key: ApiKeyRow, secret: string): Promise<boolean> {
+async function verifyAgentKey(key: ApiKeyRow, plaintext: string): Promise<boolean> {
   const now = Date.now();
   const expired = key.expires_at ? Date.parse(key.expires_at) <= now : false;
   if (expired || key.revoked_at) return false;
 
-  return argon2.verify(key.key_hash, secret);
+  return verifyKey(plaintext, key.key_hash);
 }
 
-function normalizeScopes(keyScopes: Json, memberScopes: Json): string[] {
-  const scopes = Array.isArray(keyScopes) && keyScopes.length > 0 ? keyScopes : memberScopes;
+function normalizeScopes(keyScopes: Json, memberScopes: Json): AgentScopes | null {
+  const candidate = isNonEmptyObject(keyScopes) ? keyScopes : memberScopes;
+  const result = AgentScopesSchema.safeParse(candidate);
+  return result.success ? result.data : null;
+}
 
-  if (!Array.isArray(scopes)) return [];
+function extractBearerToken(authorization: string | null): string | null {
+  if (!authorization) return null;
+  const match = /^Bearer\s+(.+)$/i.exec(authorization.trim());
+  return match?.[1]?.trim() || null;
+}
 
-  return scopes.filter((scope): scope is string => typeof scope === "string");
+function isNonEmptyObject(value: Json): boolean {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value) &&
+    Object.keys(value).length > 0
+  );
 }
