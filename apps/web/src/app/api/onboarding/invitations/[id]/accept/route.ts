@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { setActiveTeamCookie } from "@/lib/auth/active-team";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createRouteHandlerSupabaseClient } from "@/lib/supabase/server";
 
 type AcceptRouteContext = {
   params: Promise<{
@@ -25,26 +25,31 @@ function statusForPostgresCode(code?: string): number {
 
 export async function POST(_request: NextRequest, context: AcceptRouteContext) {
   const { id } = await context.params;
-  const supabase = await createServerSupabaseClient();
+  const { supabase, withSupabaseResponseHeaders } =
+    await createRouteHandlerSupabaseClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return withSupabaseResponseHeaders(
+      NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    );
   }
 
   const { data, error } = await supabase.rpc("app_accept_invitation", { invitation: id }).single();
 
   if (error) {
-    return NextResponse.json(
-      { error: error.message },
-      { status: statusForPostgresCode(error.code) }
+    return withSupabaseResponseHeaders(
+      NextResponse.json(
+        { error: error.message },
+        { status: statusForPostgresCode(error.code) }
+      )
     );
   }
 
   const invitation = data as AcceptedInvitation;
   const response = NextResponse.json({ invitation });
   setActiveTeamCookie(response, invitation.team_id);
-  return response;
+  return withSupabaseResponseHeaders(response);
 }
