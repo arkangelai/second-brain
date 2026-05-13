@@ -1,7 +1,5 @@
 import "server-only";
 
-import { createHash, randomBytes } from "node:crypto";
-
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { cookies, headers } from "next/headers";
 
@@ -15,6 +13,10 @@ import {
 } from "./team-types";
 import { sendEmail } from "@/lib/email/client";
 import { InvitationEmail } from "@/lib/email/templates/invitation";
+import {
+  generateInvitationToken,
+  hashInvitationToken,
+} from "@/lib/invitations/tokens";
 
 const DEV_USER_ID = "00000000-0000-0000-0000-000000000001";
 const INVITATION_TTL_DAYS = 7;
@@ -216,8 +218,8 @@ export async function createInvitation(
   return withTeamContext(async (ctx) => {
     assertAdmin(ctx);
 
-    const token = generateInviteToken();
-    const tokenHash = hashInviteToken(token);
+    const token = generateInvitationToken();
+    const tokenHash = hashInvitationToken(token);
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + INVITATION_TTL_DAYS);
 
@@ -295,14 +297,14 @@ export async function regenerateInvitationLink(
   return withTeamContext(async (ctx) => {
     assertAdmin(ctx);
 
-    const token = generateInviteToken();
+    const token = generateInvitationToken();
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + INVITATION_TTL_DAYS);
 
     const { data, error } = await ctx.supabase
       .from("team_invitations")
       .update({
-        token_hash: hashInviteToken(token),
+        token_hash: hashInvitationToken(token),
         expires_at: expiresAt.toISOString(),
       })
       .eq("team_id", ctx.teamId)
@@ -702,14 +704,6 @@ function mapInvitation(row: InvitationRow): PendingInvitation {
     invitedAt: row.created_at,
     expiresAt: row.expires_at,
   };
-}
-
-function generateInviteToken(): string {
-  return randomBytes(32).toString("base64url");
-}
-
-function hashInviteToken(token: string): string {
-  return createHash("sha256").update(token).digest("hex");
 }
 
 function invitationLink(token: string): string {

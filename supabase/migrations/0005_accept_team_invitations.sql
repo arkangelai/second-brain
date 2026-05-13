@@ -1,6 +1,21 @@
 -- 0005_accept_team_invitations.sql
 -- Atomic invitation acceptance for public magic-link invite URLs.
 
+with ranked_pending_invitations as (
+  select
+    id,
+    row_number() over (
+      partition by team_id, email
+      order by created_at desc, expires_at desc, id desc
+    ) as invitation_rank
+  from public.team_invitations
+  where accepted_at is null
+)
+delete from public.team_invitations ti
+using ranked_pending_invitations rpi
+where ti.id = rpi.id
+  and rpi.invitation_rank > 1;
+
 create unique index if not exists team_invitations_one_pending_per_email
   on public.team_invitations (team_id, email)
   where accepted_at is null;

@@ -5,5 +5,5 @@ export function generateInvitationToken(): string {
 }
 
 export function hashInvitationToken(token: string): string {
-  return createHash("sha256").update(token, "utf8").digest("base64url");
+  return createHash("sha256").update(token, "utf8").digest("hex");
 }
