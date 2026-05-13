@@ -11,13 +11,16 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const nextPath = normalizeNextPath(next);
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center gap-8 px-6 py-10">
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
-        <p className="text-sm text-muted-foreground">Second Brain admin</p>
-      </header>
-
-      <LoginForm nextPath={nextPath} />
+    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-6 py-12">
+      <div className="space-y-6">
+        <div className="space-y-2">
+          <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
+          <p className="text-sm text-muted-foreground">
+            Use your email to continue to Second Brain.
+          </p>
+        </div>
+        <LoginForm nextPath={nextPath} />
+      </div>
     </main>
   );
 }

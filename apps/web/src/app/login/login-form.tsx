@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { type FormEvent, useMemo, useState } from "react";
+import { Mail } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -60,6 +61,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
       </div>
 
       <Button type="submit" disabled={status === "sending"} className="w-full">
+        <Mail aria-hidden="true" />
         {status === "sending" ? "Sending..." : "Send magic link"}
       </Button>
 
@@ -68,6 +70,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
           className={
             status === "error" ? "text-sm text-destructive" : "text-sm text-muted-foreground"
           }
+          role="status"
         >
           {message}
         </p>
