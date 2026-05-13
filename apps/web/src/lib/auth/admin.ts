@@ -104,6 +104,8 @@ async function resolveTeam(
     .select("team_id")
     .eq("user_id", userId)
     .eq("member_type", "human")
+    .eq("active", true)
+    .in("role", ["owner", "admin"])
     .order("joined_at", { ascending: true })
     .limit(1);
 
