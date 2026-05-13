@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+const DEFAULT_PUBLIC_APP_NAME = "Second Brain";
+
 const serverSchema = z.object({
   SUPABASE_SECRET_KEY: z
     .string()
@@ -27,7 +29,10 @@ const publicSchema = z
     NEXT_PUBLIC_SUPABASE_ANON_KEY: z
       .string()
       .min(1, "must be set (Supabase project settings → API → anon/public key)"),
-    NEXT_PUBLIC_APP_NAME: z.string().min(1, "must be set (display name shown in the UI)"),
+    NEXT_PUBLIC_APP_NAME: z
+      .string()
+      .min(1, "must be set (display name shown in the UI)")
+      .default(DEFAULT_PUBLIC_APP_NAME),
   })
   .refine((env) => !looksLikeServiceRoleKey(env.NEXT_PUBLIC_SUPABASE_ANON_KEY), {
     message:
