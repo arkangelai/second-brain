@@ -74,8 +74,7 @@ export async function getTeamAdminPageData(): Promise<AdminTeamPageData> {
   const supabase = await createServerSupabaseClient();
   const requestedTeam = await requestedTeamId();
   const { data, error } = await supabase
-    .rpc("app_team_admin_page", { requested_team: requestedTeam })
-    .single();
+    .rpc("app_team_admin_page", { requested_team: requestedTeam });
 
   if (error) {
     throw rpcError(error);
@@ -88,8 +87,7 @@ export async function renameTeam(name: string): Promise<TeamSummary> {
   const supabase = await createServerSupabaseClient();
   const requestedTeam = await requestedTeamId();
   const { data, error } = await supabase
-    .rpc("app_rename_team", { requested_team: requestedTeam, new_name: name })
-    .single();
+    .rpc("app_rename_team", { requested_team: requestedTeam, new_name: name });
 
   if (error) {
     throw rpcError(error);
@@ -109,8 +107,7 @@ export async function updateMemberRole(
       requested_team: requestedTeam,
       target_user: userId,
       next_role: role,
-    })
-    .single();
+    });
 
   if (error) {
     throw rpcError(error);
@@ -149,8 +146,7 @@ export async function createInvitation(
       invite_role: role,
       invite_token_hash: hashInviteToken(token),
       invite_expires_at: expiresAt.toISOString(),
-    })
-    .single();
+    });
 
   if (error) {
     throw rpcError(error);
@@ -190,8 +186,7 @@ export async function regenerateInvitationLink(
       invitation_id: invitationId,
       invite_token_hash: hashInviteToken(token),
       invite_expires_at: expiresAt.toISOString(),
-    })
-    .single();
+    });
 
   if (error) {
     throw rpcError(error);
@@ -210,8 +205,12 @@ async function requestedTeamId(): Promise<string | null> {
 }
 
 function rpcError(error: { message: string; code?: string }): AdminTeamError {
+  if (/authentication required/i.test(error.message)) {
+    return new AdminTeamError(error.message, 401);
+  }
+
   const status =
-    error.code === "42501" || /not have access|authentication|required|only/i.test(error.message)
+    error.code === "42501" || /not have access|only/i.test(error.message)
       ? 403
       : 500;
 

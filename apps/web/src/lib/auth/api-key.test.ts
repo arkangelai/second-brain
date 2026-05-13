@@ -4,7 +4,9 @@ import { getBearerToken, parseAgentApiKey } from "./api-key";
 
 describe("getBearerToken", () => {
   test("returns a single bearer token", () => {
-    expect(getBearerToken("Bearer sb_live_demo_secret")).toBe("sb_live_demo_secret");
+    expect(getBearerToken("Bearer sb_live_demo_key123_secret")).toBe(
+      "sb_live_demo_key123_secret"
+    );
   });
 
   test("rejects missing or ambiguous authorization values", () => {
@@ -16,15 +18,17 @@ describe("getBearerToken", () => {
 
 describe("parseAgentApiKey", () => {
   test("parses the team slug hint and secret", () => {
-    expect(parseAgentApiKey("sb_live_acme_abc123")).toEqual({
+    expect(parseAgentApiKey("sb_live_acme_key123_abc123")).toEqual({
       teamSlug: "acme",
+      keyPrefix: "key123",
       secret: "abc123",
     });
   });
 
   test("does not require a fixed secret length before verification", () => {
-    expect(parseAgentApiKey("sb_live_acme_short")).toEqual({
+    expect(parseAgentApiKey("sb_live_acme_key123_short")).toEqual({
       teamSlug: "acme",
+      keyPrefix: "key123",
       secret: "short",
     });
   });
@@ -33,5 +37,7 @@ describe("parseAgentApiKey", () => {
     expect(parseAgentApiKey("sb_test_acme_secret")).toBeNull();
     expect(parseAgentApiKey("sb_live__secret")).toBeNull();
     expect(parseAgentApiKey("sb_live_acme_")).toBeNull();
+    expect(parseAgentApiKey("sb_live_acme__secret")).toBeNull();
+    expect(parseAgentApiKey("sb_live_acme_key123_")).toBeNull();
   });
 });

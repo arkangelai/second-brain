@@ -26,6 +26,7 @@ type ApiKeyRow = {
   id: string;
   team_id: string;
   member_id: string;
+  key_prefix: string | null;
   key_hash: string;
   scopes: Json;
   expires_at: string | null;
@@ -57,22 +58,25 @@ async function resolveAgentPrincipal(token: string): Promise<AgentPrincipal | nu
 
   if (!team) return null;
 
-  const { data: keys, error } = await admin
+  const { data: key, error } = await admin
     .from("team_member_api_keys")
-    .select("id, team_id, member_id, key_hash, scopes, expires_at, revoked_at")
+    .select(
+      "id, team_id, member_id, key_prefix, key_hash, scopes, expires_at, revoked_at"
+    )
     .eq("team_id", team.id)
-    .is("revoked_at", null);
+    .eq("key_prefix", parsed.keyPrefix)
+    .is("revoked_at", null)
+    .maybeSingle();
 
-  if (error || !keys) return null;
+  if (error || !key) return null;
 
-  const matchingKey = await findMatchingAgentKey(keys, parsed.secret);
-  if (!matchingKey) return null;
+  if (!(await verifyAgentKey(key, parsed.secret))) return null;
 
   const { data: member } = await admin
     .from("team_members")
     .select("team_id, member_id, member_type, user_id, role, scopes, active, revoked_at")
-    .eq("team_id", matchingKey.team_id)
-    .eq("member_id", matchingKey.member_id)
+    .eq("team_id", key.team_id)
+    .eq("member_id", key.member_id)
     .eq("member_type", "agent")
     .eq("active", true)
     .is("revoked_at", null)
@@ -83,31 +87,23 @@ async function resolveAgentPrincipal(token: string): Promise<AgentPrincipal | nu
   await admin
     .from("team_member_api_keys")
     .update({ last_used_at: new Date().toISOString() })
-    .eq("id", matchingKey.id);
+    .eq("id", key.id);
 
   return {
     kind: "agent",
     id: member.member_id,
     team_id: member.team_id,
     role: member.role,
-    scopes: normalizeScopes(matchingKey.scopes, member.scopes),
+    scopes: normalizeScopes(key.scopes, member.scopes),
   };
 }
 
-async function findMatchingAgentKey(keys: ApiKeyRow[], secret: string): Promise<ApiKeyRow | null> {
-  let match: ApiKeyRow | null = null;
+async function verifyAgentKey(key: ApiKeyRow, secret: string): Promise<boolean> {
   const now = Date.now();
+  const expired = key.expires_at ? Date.parse(key.expires_at) <= now : false;
+  if (expired || key.revoked_at) return false;
 
-  for (const key of keys) {
-    const expired = key.expires_at ? Date.parse(key.expires_at) <= now : false;
-    if (expired || key.revoked_at) continue;
-
-    if (await argon2.verify(key.key_hash, secret)) {
-      match = key;
-    }
-  }
-
-  return match;
+  return argon2.verify(key.key_hash, secret);
 }
 
 function normalizeScopes(keyScopes: Json, memberScopes: Json): string[] {

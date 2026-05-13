@@ -102,6 +102,8 @@ end;
 $$;
 
 revoke all on function public.app_resolve_human_principal(uuid) from public;
+revoke all on function public.app_set_team(uuid) from public;
+grant execute on function public.app_set_team(uuid) to authenticated, service_role;
 grant execute on function public.app_resolve_human_principal(uuid) to authenticated;
 
 create or replace function public.app_team_member_json(
