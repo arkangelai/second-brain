@@ -9,10 +9,51 @@ type InsertedRow = {
 
 type SupabaseStub = {
   client: {
-    from: (table: string) => unknown;
+    from: (table: string) => AgentAuthQuery;
   };
   inserts: InsertedRow[];
   updates: InsertedRow[];
+};
+
+type QueryResult<Data> = {
+  data: Data;
+  error: null;
+};
+
+type TeamRecord = {
+  id: string;
+  slug: string;
+  name: string;
+};
+
+type KeyRecord = {
+  id: string;
+  team_id: string;
+  member_id: string;
+  name: string;
+  key_hash: string;
+  scopes: string[];
+  revoked_at: null;
+  expires_at: string;
+};
+
+type AgentRecord = {
+  member_id: string;
+  display_name: string;
+  scopes: string[];
+  active: true;
+  revoked_at: null;
+};
+
+type AgentAuthQuery = {
+  select: (columns: string) => AgentAuthQuery;
+  eq: () => AgentAuthQuery;
+  order: () => AgentAuthQuery;
+  limit: () => AgentAuthQuery;
+  gte: () => AgentAuthQuery;
+  maybeSingle: () => QueryResult<TeamRecord | KeyRecord | AgentRecord | null>;
+  insert: (payload: Record<string, unknown>) => QueryResult<null>;
+  update: (payload: Record<string, unknown>) => AgentAuthQuery;
 };
 
 let supabaseStub: SupabaseStub;
@@ -67,7 +108,7 @@ function createSupabaseStub({
     client: {
       from(table: string) {
         let selectedColumns = "";
-        const query: any = {
+        const query: AgentAuthQuery = {
           select(columns: string) {
             selectedColumns = columns;
             return query;

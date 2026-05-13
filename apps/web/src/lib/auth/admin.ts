@@ -96,7 +96,12 @@ async function resolveTeam(
 
   if (profile?.default_team_id) {
     const defaultTeam = await findTeam(supabase, "id", profile.default_team_id);
-    if (defaultTeam) return defaultTeam;
+    if (
+      defaultTeam &&
+      (await hasAdminMembership(supabase, userId, defaultTeam.id))
+    ) {
+      return defaultTeam;
+    }
   }
 
   const { data: memberships } = await supabase
@@ -111,6 +116,24 @@ async function resolveTeam(
 
   const firstTeamId = memberships?.[0]?.team_id;
   return firstTeamId ? await findTeam(supabase, "id", firstTeamId) : null;
+}
+
+async function hasAdminMembership(
+  supabase: SupabaseClient,
+  userId: string,
+  teamId: string,
+): Promise<boolean> {
+  const { data } = await supabase
+    .from("team_members")
+    .select("role")
+    .eq("team_id", teamId)
+    .eq("user_id", userId)
+    .eq("member_type", "human")
+    .eq("active", true)
+    .in("role", ["owner", "admin"])
+    .maybeSingle();
+
+  return Boolean(data);
 }
 
 async function findTeam(
