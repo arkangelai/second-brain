@@ -41,6 +41,7 @@ returns table (
   team_name text
 )
 language plpgsql
+security definer
 set search_path = public, pg_temp
 as $$
 declare
@@ -114,12 +115,13 @@ create or replace function public.app_team_member_json(
 returns jsonb
 language sql
 stable
+security definer
 set search_path = public, pg_temp
 as $$
   select jsonb_build_object(
     'userId', (member).user_id,
     'name', coalesce(nullif(user_profiles.full_name, ''), (member).display_name, 'Unknown member'),
-    'email', 'Unknown email',
+    'email', coalesce(auth_users.email, 'Unknown email'),
     'avatarUrl', user_profiles.avatar_url,
     'role', (member).role,
     'joinedAt', (member).joined_at,
@@ -127,6 +129,7 @@ as $$
   )
   from (select 1) seed
   left join public.user_profiles on user_profiles.user_id = (member).user_id
+  left join auth.users auth_users on auth_users.id = (member).user_id
 $$;
 
 create or replace function public.app_invitation_json(invitation public.team_invitations)
@@ -147,6 +150,7 @@ $$;
 create or replace function public.app_team_admin_page(requested_team uuid default null)
 returns jsonb
 language plpgsql
+security definer
 set search_path = public, pg_temp
 as $$
 declare
@@ -217,6 +221,7 @@ create or replace function public.app_rename_team(
 )
 returns jsonb
 language plpgsql
+security definer
 set search_path = public, pg_temp
 as $$
 declare
@@ -256,6 +261,7 @@ create or replace function public.app_update_team_member_role(
 )
 returns jsonb
 language plpgsql
+security definer
 set search_path = public, pg_temp
 as $$
 declare
@@ -321,6 +327,7 @@ create or replace function public.app_remove_team_member(
 )
 returns void
 language plpgsql
+security definer
 set search_path = public, pg_temp
 as $$
 declare
@@ -382,6 +389,7 @@ create or replace function public.app_create_team_invitation(
 )
 returns jsonb
 language plpgsql
+security definer
 set search_path = public, pg_temp
 as $$
 declare
@@ -435,6 +443,7 @@ create or replace function public.app_cancel_team_invitation(
 )
 returns void
 language plpgsql
+security definer
 set search_path = public, pg_temp
 as $$
 declare
@@ -467,6 +476,7 @@ create or replace function public.app_regenerate_team_invitation(
 )
 returns jsonb
 language plpgsql
+security definer
 set search_path = public, pg_temp
 as $$
 declare

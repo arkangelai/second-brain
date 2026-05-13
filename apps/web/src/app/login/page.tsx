@@ -2,7 +2,7 @@ import { LoginForm } from "./login-form";
 
 type LoginPageProps = {
   searchParams: Promise<{
-    next?: string;
+    next?: string | string[];
   }>;
 };
 
@@ -22,10 +22,12 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   );
 }
 
-function normalizeNextPath(value: string | undefined): string {
-  if (!value?.startsWith("/") || value.startsWith("//")) {
+function normalizeNextPath(value: string | string[] | undefined): string {
+  const next = Array.isArray(value) ? value[0] : value;
+
+  if (!next?.startsWith("/") || next.startsWith("//")) {
     return "/admin/team";
   }
 
-  return value;
+  return next;
 }
