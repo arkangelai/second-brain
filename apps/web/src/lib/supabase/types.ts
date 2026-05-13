@@ -114,6 +114,28 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      app_create_team: {
+        Args: {
+          team_name?: string | null;
+          requested_slug?: string | null;
+        };
+        Returns: {
+          id: string;
+          slug: string;
+          name: string;
+        }[];
+      };
+      app_accept_invitation: {
+        Args: {
+          invitation?: string | null;
+        };
+        Returns: {
+          team_id: string;
+          team_slug: string;
+          team_name: string;
+          role: TeamRole;
+        }[];
+      };
       accept_team_invitation: {
         Args: {
           invite_token_hash: string;
