@@ -5,6 +5,7 @@
     "allowJs": true,
     "incremental": true,
     "jsx": "preserve",
+    "types": ["@types/bun"],
     "plugins": [{ "name": "next" }],
     "paths": {
       "@/*": ["./src/*"]
