@@ -91,7 +91,19 @@ export async function authenticateAgentRequest(
   }
 
   const typedKey = key as KeyRecord;
-  const { data: agent } = await supabase
+  if (typedKey.revoked_at) {
+    await logAuthFailure(supabase, request, {
+      reason: "revoked_key",
+      teamId: team.id,
+      memberId: typedKey.member_id,
+      keyId: typedKey.id,
+      keyPrefix: parsedKey.prefix,
+      teamSlug: parsedKey.teamSlug,
+    });
+    return null;
+  }
+
+  const { data: agent, error: agentError } = await supabase
     .from("team_members")
     .select("member_id, display_name, scopes, active, revoked_at")
     .eq("team_id", team.id)
@@ -99,7 +111,17 @@ export async function authenticateAgentRequest(
     .eq("member_type", "agent")
     .maybeSingle();
 
-  if (!agent || typedKey.revoked_at || !agent.active || agent.revoked_at) {
+  if (agentError) {
+    console.error("Unable to look up agent membership during auth", {
+      teamId: team.id,
+      memberId: typedKey.member_id,
+      keyId: typedKey.id,
+      error: agentError,
+    });
+    return null;
+  }
+
+  if (!agent || !agent.active || agent.revoked_at) {
     await logAuthFailure(supabase, request, {
       reason: "revoked_key",
       teamId: team.id,

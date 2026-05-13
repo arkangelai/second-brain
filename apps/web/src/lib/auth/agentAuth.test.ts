@@ -17,7 +17,7 @@ type SupabaseStub = {
 
 type QueryResult<Data> = {
   data: Data;
-  error: null;
+  error: { message: string } | null;
 };
 
 type TeamRecord = {
@@ -92,12 +92,47 @@ describe("authenticateAgentRequest", () => {
     expect(failure?.key_prefix).toBe(key.prefix);
     expect(supabaseStub.updates).toEqual([]);
   });
+
+  it("does not count agent lookup query errors as revoked key failures", async () => {
+    const key = generateKey("dev");
+    const keyHash = await hashKey(key.plaintext);
+    supabaseStub = createSupabaseStub({
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      keyHash,
+      agentLookupError: true,
+    });
+    const originalConsoleError = console.error;
+    console.error = mock(() => {});
+
+    try {
+      const auth = await authenticateAgentRequest(
+        new Request("http://localhost/api/whoami", {
+          headers: {
+            authorization: `Bearer ${key.plaintext}`,
+            "user-agent": "bun-test",
+          },
+        }),
+      );
+
+      expect(auth).toBeNull();
+      expect(
+        supabaseStub.inserts.some(
+          (insert) => insert.table === "agent_auth_failures",
+        ),
+      ).toBe(false);
+      expect(supabaseStub.updates).toEqual([]);
+    } finally {
+      console.error = originalConsoleError;
+    }
+  });
 });
 
 function createSupabaseStub({
+  agentLookupError = false,
   expiresAt,
   keyHash,
 }: {
+  agentLookupError?: boolean;
   expiresAt: string;
   keyHash: string;
 }): SupabaseStub {
@@ -154,6 +189,13 @@ function createSupabaseStub({
             }
 
             if (table === "team_members") {
+              if (agentLookupError) {
+                return {
+                  data: null,
+                  error: { message: "database unavailable" },
+                };
+              }
+
               return {
                 data: {
                   member_id: "agent-id",

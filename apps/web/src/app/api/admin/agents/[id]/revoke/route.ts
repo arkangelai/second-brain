@@ -13,6 +13,7 @@ export async function POST(
   const { id } = await context.params;
   const admin = await resolveAdminContext(request);
   if ("error" in admin) return jsonError(admin.error, admin.status);
+  if (!isUuid(id)) return jsonError("Invalid agent id", 400);
 
   const now = new Date().toISOString();
   const { data: agent, error: agentError } = await admin.supabase
@@ -67,4 +68,10 @@ export async function POST(
       created_by_user_id: agent.created_by_user_id,
     },
   });
+}
+
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+    value,
+  );
 }
