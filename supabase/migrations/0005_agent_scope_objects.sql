@@ -77,6 +77,26 @@ update public.team_member_api_keys
    end;
 
 alter table public.team_members
+  alter column scopes set default '{
+    "read_paths": ["**/*"],
+    "write_paths": [],
+    "append_paths": [],
+    "ops": ["search", "get"],
+    "ingestion": {"urls": false, "files": false},
+    "max_writes_per_hour": 0
+  }'::jsonb;
+
+alter table public.team_member_api_keys
+  alter column scopes set default '{
+    "read_paths": ["**/*"],
+    "write_paths": [],
+    "append_paths": [],
+    "ops": ["search", "get"],
+    "ingestion": {"urls": false, "files": false},
+    "max_writes_per_hour": 0
+  }'::jsonb;
+
+alter table public.team_members
   add constraint team_members_scopes_object_check
   check (jsonb_typeof(scopes) = 'object');
 
