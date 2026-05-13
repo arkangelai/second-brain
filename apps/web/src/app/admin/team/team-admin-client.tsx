@@ -59,7 +59,13 @@ type InvitationsUpdate =
   | { type: "remove"; invitationId: string }
   | { type: "replace"; invitation: PendingInvitation };
 
-export function TeamAdminClient({ data }: { data: AdminTeamPageData }) {
+export function TeamAdminClient({
+  data,
+  inviteAccepted = false,
+}: {
+  data: AdminTeamPageData;
+  inviteAccepted?: boolean;
+}) {
   const router = useRouter();
   const [isPending, startTransition] = React.useTransition();
   const [teamName, setTeamName] = React.useOptimistic(
@@ -97,6 +103,12 @@ export function TeamAdminClient({ data }: { data: AdminTeamPageData }) {
   );
 
   const ownerCount = members.filter((member) => member.role === "owner").length;
+
+  React.useEffect(() => {
+    if (inviteAccepted) {
+      toast.success("Invitation accepted.");
+    }
+  }, [inviteAccepted]);
 
   function refreshAfter(result: ActionResult, successMessage?: string) {
     if (result.ok) {

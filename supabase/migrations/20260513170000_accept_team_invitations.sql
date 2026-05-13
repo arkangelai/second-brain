@@ -1,0 +1,104 @@
+-- 20260513170000_accept_team_invitations.sql
+-- Atomic invitation acceptance for public magic-link invite URLs.
+
+with ranked_pending_invitations as (
+  select
+    id,
+    row_number() over (
+      partition by team_id, email
+      order by created_at desc, expires_at desc, id desc
+    ) as invitation_rank
+  from public.team_invitations
+  where accepted_at is null
+)
+delete from public.team_invitations ti
+using ranked_pending_invitations rpi
+where ti.id = rpi.id
+  and rpi.invitation_rank > 1;
+
+create unique index if not exists team_invitations_one_pending_per_email
+  on public.team_invitations (team_id, email)
+  where accepted_at is null;
+
+create or replace function public.accept_team_invitation(
+  invite_token_hash text,
+  accepting_user uuid
+)
+returns table(status text, team_id uuid, role text)
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  invitation public.team_invitations%rowtype;
+  effective_role text;
+  user_email text;
+begin
+  select *
+    into invitation
+    from public.team_invitations ti
+   where ti.token_hash = invite_token_hash
+   for update;
+
+  if not found
+     or invitation.accepted_at is not null
+     or invitation.expires_at <= now() then
+    return query select 'gone'::text, null::uuid, null::text;
+    return;
+  end if;
+
+  select email
+    into user_email
+    from auth.users
+   where id = accepting_user;
+
+  if user_email is null
+     or lower(user_email) <> lower(invitation.email::text) then
+    return query select 'email_mismatch'::text, null::uuid, null::text;
+    return;
+  end if;
+
+  insert into public.user_profiles (user_id, default_team_id)
+  values (accepting_user, invitation.team_id)
+  on conflict (user_id) do update
+     set default_team_id = excluded.default_team_id;
+
+  insert into public.team_members as tm (
+    team_id,
+    member_id,
+    member_type,
+    user_id,
+    role,
+    invited_by
+  ) values (
+    invitation.team_id,
+    accepting_user,
+    'human',
+    accepting_user,
+    invitation.role,
+    invitation.invited_by
+  )
+  on conflict (team_id, member_id) do update
+     set role = case
+           when tm.role = 'owner'
+            and excluded.role <> 'owner'
+             then tm.role
+           else excluded.role
+         end,
+         invited_by = excluded.invited_by,
+         active = true,
+         revoked_at = null
+   where tm.member_type = 'human'
+   returning tm.role into effective_role;
+
+  update public.team_invitations
+     set accepted_at = now(),
+         accepted_by = accepting_user
+   where id = invitation.id;
+
+  return query select 'accepted'::text, invitation.team_id, effective_role;
+end;
+$$;
+
+revoke all on function public.accept_team_invitation(text, uuid) from public;
+grant execute on function public.accept_team_invitation(text, uuid) to service_role;
