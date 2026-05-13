@@ -1,64 +1,40 @@
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import { Building2, Shield, Users } from "lucide-react";
+import type { Metadata } from "next";
 
-import {
-  ACTIVE_TEAM_COOKIE,
-  getDefaultTeamId,
-  getHumanMemberships,
-  resolveActiveTeamId,
-} from "@/lib/auth/active-team";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { TeamAdminClient } from "./team-admin-client";
+import { AdminTeamError, getTeamAdminPageData } from "@/lib/admin/team";
+
+export const metadata: Metadata = {
+  title: "Team Admin | Second Brain",
+};
+
+export const dynamic = "force-dynamic";
 
 export default async function AdminTeamPage() {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  try {
+    const data = await getTeamAdminPageData();
 
-  if (!user) {
-    redirect("/login?next=/admin/team");
+    return <TeamAdminClient data={data} />;
+  } catch (error) {
+    return <AdminTeamErrorState error={error} />;
   }
+}
 
-  const cookieStore = await cookies();
-  const memberships = await getHumanMemberships(supabase, user.id);
-  const defaultTeamId = await getDefaultTeamId(supabase, user.id);
-  const activeTeamId = resolveActiveTeamId(
-    memberships,
-    cookieStore.get(ACTIVE_TEAM_COOKIE)?.value,
-    defaultTeamId
-  );
-  const activeMembership = memberships.find((membership) => membership.teamId === activeTeamId);
-
-  if (!activeMembership) {
-    redirect("/onboarding");
-  }
+function AdminTeamErrorState({ error }: { error: unknown }) {
+  const message =
+    error instanceof AdminTeamError
+      ? error.message
+      : "The team admin page could not be loaded.";
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-8">
-      <div className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight">{activeMembership.team.name}</h1>
-        <p className="text-sm text-muted-foreground">
-          Team settings and membership for {activeMembership.team.slug}.
+    <main className="flex min-h-dvh items-center justify-center bg-background p-6">
+      <section className="w-full max-w-md rounded-lg border border-border bg-card p-6 text-card-foreground shadow-sm">
+        <p className="text-sm font-medium text-muted-foreground">
+          Team admin unavailable
         </p>
-      </div>
-
-      <section className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-lg border border-border bg-card p-5 text-card-foreground">
-          <Building2 className="mb-4 size-5 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">Active team</p>
-          <p className="mt-1 font-medium">{activeMembership.team.name}</p>
-        </div>
-        <div className="rounded-lg border border-border bg-card p-5 text-card-foreground">
-          <Shield className="mb-4 size-5 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">Your role</p>
-          <p className="mt-1 capitalize font-medium">{activeMembership.role}</p>
-        </div>
-        <div className="rounded-lg border border-border bg-card p-5 text-card-foreground">
-          <Users className="mb-4 size-5 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">Teams</p>
-          <p className="mt-1 font-medium">{memberships.length}</p>
-        </div>
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight">
+          Check your team access
+        </h1>
+        <p className="mt-3 text-sm text-muted-foreground">{message}</p>
       </section>
     </main>
   );
