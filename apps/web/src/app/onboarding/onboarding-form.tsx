@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Building2, Check, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { normalizeTeamSlug, slugFromTeamName } from "@/lib/onboarding/slug";
+import { normalizeTeamSlug } from "@/lib/onboarding/slug";
 
 export type PendingInvite = {
   id: string;
@@ -28,18 +28,19 @@ export function OnboardingForm({ invites }: { invites: PendingInvite[] }) {
 
     const controller = new AbortController();
     const timeout = window.setTimeout(async () => {
+      const nextSlug = normalizeTeamSlug(name);
       const response = await fetch(
-        `/api/onboarding/slug?value=${encodeURIComponent(slugFromTeamName(name))}`,
+        `/api/onboarding/slug?value=${encodeURIComponent(nextSlug)}`,
         { signal: controller.signal }
       ).catch(() => null);
 
       if (!response?.ok) {
-        setSlug(slugFromTeamName(name));
+        setSlug(nextSlug);
         return;
       }
 
       const body = (await response.json()) as { slug?: string };
-      setSlug(body.slug ?? slugFromTeamName(name));
+      setSlug(body.slug ?? nextSlug);
     }, 250);
 
     return () => {
@@ -144,7 +145,7 @@ export function OnboardingForm({ invites }: { invites: PendingInvite[] }) {
               onChange={(event) => {
                 setName(event.target.value);
                 if (!slugEdited) {
-                  setSlug(slugFromTeamName(event.target.value));
+                  setSlug(normalizeTeamSlug(event.target.value));
                 }
               }}
               required

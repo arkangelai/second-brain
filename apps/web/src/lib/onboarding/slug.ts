@@ -10,10 +10,6 @@ export function normalizeTeamSlug(value: string): string {
   return slug || "team";
 }
 
-export function slugFromTeamName(name: string): string {
-  return normalizeTeamSlug(name);
-}
-
 export async function findAvailableTeamSlug(
   supabase: SupabaseClient,
   requestedSlug: string
