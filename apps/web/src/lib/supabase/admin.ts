@@ -9,19 +9,23 @@ type RouteHandlerOnly = {
   routeHandler: true;
 };
 
-function createAdminClient() {
-  return createClient<Database>(publicEnv.NEXT_PUBLIC_SUPABASE_URL, serverEnv.SUPABASE_SECRET_KEY, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-}
-
-export function createAdminSupabaseClient() {
-  return createAdminClient();
+function createServiceRoleClient() {
+  return createClient<Database>(
+    publicEnv.NEXT_PUBLIC_SUPABASE_URL,
+    serverEnv.SUPABASE_SECRET_KEY,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  );
 }
 
 export function createSupabaseAdminClient(_options: RouteHandlerOnly) {
-  return createAdminClient();
+  return createServiceRoleClient();
+}
+
+export function createAdminSupabaseClient() {
+  return createServiceRoleClient();
 }

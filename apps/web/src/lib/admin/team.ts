@@ -1,8 +1,5 @@
 import "server-only";
 
-import { createHash, randomBytes } from "node:crypto";
-
-import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 
 import {
@@ -13,6 +10,13 @@ import {
   type TeamRole,
   type TeamSummary,
 } from "./team-types";
+import { sendEmail } from "@/lib/email/client";
+import { InvitationEmail } from "@/lib/email/templates/invitation";
+import {
+  generateInvitationToken,
+  hashInvitationToken,
+} from "@/lib/invitations/tokens";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const INVITATION_TTL_DAYS = 7;
 const UUID_RE =
@@ -73,8 +77,9 @@ export function validateInviteEmail(value: unknown): string {
 export async function getTeamAdminPageData(): Promise<AdminTeamPageData> {
   const supabase = await createServerSupabaseClient();
   const requestedTeam = await requestedTeamId();
-  const { data, error } = await supabase
-    .rpc("app_team_admin_page", { requested_team: requestedTeam });
+  const { data, error } = await supabase.rpc("app_team_admin_page", {
+    requested_team: requestedTeam,
+  });
 
   if (error) {
     throw rpcError(error);
@@ -86,8 +91,10 @@ export async function getTeamAdminPageData(): Promise<AdminTeamPageData> {
 export async function renameTeam(name: string): Promise<TeamSummary> {
   const supabase = await createServerSupabaseClient();
   const requestedTeam = await requestedTeamId();
-  const { data, error } = await supabase
-    .rpc("app_rename_team", { requested_team: requestedTeam, new_name: name });
+  const { data, error } = await supabase.rpc("app_rename_team", {
+    requested_team: requestedTeam,
+    new_name: name,
+  });
 
   if (error) {
     throw rpcError(error);
@@ -102,12 +109,11 @@ export async function updateMemberRole(
 ): Promise<TeamMember> {
   const supabase = await createServerSupabaseClient();
   const requestedTeam = await requestedTeamId();
-  const { data, error } = await supabase
-    .rpc("app_update_team_member_role", {
-      requested_team: requestedTeam,
-      target_user: userId,
-      next_role: role,
-    });
+  const { data, error } = await supabase.rpc("app_update_team_member_role", {
+    requested_team: requestedTeam,
+    target_user: userId,
+    next_role: role,
+  });
 
   if (error) {
     throw rpcError(error);
@@ -133,28 +139,61 @@ export async function createInvitation(
   email: string,
   role: TeamRole
 ): Promise<{ invitation: PendingInvitation; link: string }> {
-  const token = generateInviteToken();
+  const token = generateInvitationToken();
+  const tokenHash = hashInvitationToken(token);
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + INVITATION_TTL_DAYS);
 
   const supabase = await createServerSupabaseClient();
   const requestedTeam = await requestedTeamId();
-  const { data, error } = await supabase
-    .rpc("app_create_team_invitation", {
-      requested_team: requestedTeam,
-      invite_email: email,
-      invite_role: role,
-      invite_token_hash: hashInviteToken(token),
-      invite_expires_at: expiresAt.toISOString(),
-    });
+  const { data: principals, error: principalError } = await supabase.rpc(
+    "app_resolve_human_principal",
+    { requested_team: requestedTeam }
+  );
+
+  if (principalError) {
+    throw rpcError(principalError);
+  }
+
+  const principal = principals[0];
+  if (!principal) {
+    throw new AdminTeamError("Authentication required.", 401);
+  }
+
+  const { data, error } = await supabase.rpc("app_create_team_invitation", {
+    requested_team: requestedTeam,
+    invite_email: email,
+    invite_role: role,
+    invite_token_hash: tokenHash,
+    invite_expires_at: expiresAt.toISOString(),
+  });
 
   if (error) {
     throw rpcError(error);
   }
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const inviterName = inviterDisplayName(user);
+  const link = invitationLink(token);
+
+  await sendEmail({
+    to: email,
+    subject: `${inviterName} invited you to the ${principal.team_name} brain on Second Brain`,
+    react: InvitationEmail({
+      teamName: principal.team_name,
+      inviterName,
+      role,
+      acceptLink: link,
+    }),
+    text: `${inviterName} invited you to ${principal.team_name} as ${role}. Accept: ${link}`,
+    devLink: link,
+  });
+
   return {
     invitation: data as PendingInvitation,
-    link: invitationLink(token),
+    link,
   };
 }
 
@@ -174,19 +213,21 @@ export async function cancelInvitation(invitationId: string): Promise<void> {
 export async function regenerateInvitationLink(
   invitationId: string
 ): Promise<{ invitation: PendingInvitation; link: string }> {
-  const token = generateInviteToken();
+  const token = generateInvitationToken();
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + INVITATION_TTL_DAYS);
 
   const supabase = await createServerSupabaseClient();
   const requestedTeam = await requestedTeamId();
-  const { data, error } = await supabase
-    .rpc("app_regenerate_team_invitation", {
+  const { data, error } = await supabase.rpc(
+    "app_regenerate_team_invitation",
+    {
       requested_team: requestedTeam,
       invitation_id: invitationId,
-      invite_token_hash: hashInviteToken(token),
+      invite_token_hash: hashInvitationToken(token),
       invite_expires_at: expiresAt.toISOString(),
-    });
+    }
+  );
 
   if (error) {
     throw rpcError(error);
@@ -217,12 +258,17 @@ function rpcError(error: { message: string; code?: string }): AdminTeamError {
   return new AdminTeamError(error.message, status);
 }
 
-function generateInviteToken(): string {
-  return randomBytes(32).toString("base64url");
-}
+function inviterDisplayName(user: { email?: string; user_metadata?: unknown } | null): string {
+  const metadata =
+    user?.user_metadata && typeof user.user_metadata === "object"
+      ? user.user_metadata
+      : null;
+  const fullName =
+    metadata && "full_name" in metadata && typeof metadata.full_name === "string"
+      ? metadata.full_name.trim()
+      : "";
 
-function hashInviteToken(token: string): string {
-  return createHash("sha256").update(token).digest("hex");
+  return fullName || user?.email || "A teammate";
 }
 
 function invitationLink(token: string): string {
