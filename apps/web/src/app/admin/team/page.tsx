@@ -9,11 +9,26 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminTeamPage() {
+interface AdminTeamPageProps {
+  searchParams: Promise<{
+    invite?: string;
+  }>;
+}
+
+export default async function AdminTeamPage({
+  searchParams,
+}: AdminTeamPageProps) {
+  const params = await searchParams;
+
   try {
     const data = await getTeamAdminPageData();
 
-    return <TeamAdminClient data={data} />;
+    return (
+      <TeamAdminClient
+        data={data}
+        inviteAccepted={params.invite === "accepted"}
+      />
+    );
   } catch (error) {
     return <AdminTeamErrorState error={error} />;
   }

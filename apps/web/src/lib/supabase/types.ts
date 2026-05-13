@@ -114,6 +114,17 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      accept_team_invitation: {
+        Args: {
+          invite_token_hash: string;
+          accepting_user: string;
+        };
+        Returns: {
+          status: "accepted" | "gone" | "email_mismatch";
+          team_id: string | null;
+          role: string | null;
+        }[];
+      };
       app_resolve_human_principal: {
         Args: {
           requested_team?: string | null;
