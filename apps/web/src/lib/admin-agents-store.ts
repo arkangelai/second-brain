@@ -32,14 +32,14 @@ type AgentRecord = AgentSummary & {
 
 type SupabaseAgentRow = {
   member_id: string;
-  display_name: string | null;
+  display_name: string;
   description: string | null;
   scopes: unknown;
   created_by_user_id: string | null;
   last_seen_at: string | null;
   active: boolean;
   revoked_at: string | null;
-  joined_at: string | null;
+  joined_at: string;
 };
 
 type SupabaseTeamRow = {
@@ -93,9 +93,6 @@ export async function listAgents(
       .map(stripTeamId)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
-
-  const teamSlug = await getTeamSlug(context.teamId, context.teamSlug);
-  context.teamSlug = teamSlug;
 
   const url = supabaseRestUrl("/team_members");
   url.searchParams.set("team_id", `eq.${context.teamId}`);
@@ -157,14 +154,13 @@ export async function createAgent(
   await ensureSupabaseUniqueAgentName(context.teamId, name);
 
   const memberId = randomUUID();
-  const generatedKey = generateAgentKey(
+  const { plaintextKey, keyPrefix } = generateAgentKey(
     await getTeamSlug(context.teamId, context.teamSlug)
   );
-  const { plaintextKey, keyPrefix } = generatedKey;
   const keyHash = await hashKey(plaintextKey);
 
   const createUrl = supabaseRestUrl("/rpc/admin_create_agent_member");
-  const insertedMembers = await supabaseFetch<SupabaseAgentRow[]>(createUrl, {
+  const [insertedMember] = await supabaseFetch<SupabaseAgentRow[]>(createUrl, {
     method: "POST",
     body: JSON.stringify({
       p_team_id: context.teamId,
@@ -178,7 +174,7 @@ export async function createAgent(
       p_key_hash: keyHash,
     }),
   });
-  const insertedMember = insertedMembers[0];
+
   if (!insertedMember) {
     throw new RequestError(500, "Agent creation did not return an agent.");
   }
@@ -209,7 +205,7 @@ export async function revokeAgent(
 
   const now = new Date().toISOString();
   const revokeUrl = supabaseRestUrl("/rpc/admin_revoke_agent_member");
-  const updatedMembers = await supabaseFetch<SupabaseAgentRow[]>(revokeUrl, {
+  const [updatedMember] = await supabaseFetch<SupabaseAgentRow[]>(revokeUrl, {
     method: "POST",
     body: JSON.stringify({
       p_team_id: context.teamId,
@@ -218,10 +214,6 @@ export async function revokeAgent(
     }),
   });
 
-  if (updatedMembers.length === 0) {
-    throw new RequestError(404, "Agent not found.");
-  }
-  const updatedMember = updatedMembers[0];
   if (!updatedMember) {
     throw new RequestError(404, "Agent not found.");
   }
@@ -321,13 +313,13 @@ function stripTeamId({ teamId: _teamId, ...agent }: AgentRecord): AgentSummary {
 function agentFromSupabaseRow(row: SupabaseAgentRow): AgentSummary {
   return {
     id: row.member_id,
-    name: row.display_name ?? "Unnamed agent",
+    name: row.display_name,
     description: row.description ?? "",
     status: row.active && row.revoked_at === null ? "active" : "revoked",
     scopes: AgentScopesSchema.parse(row.scopes),
     lastSeen: row.last_seen_at,
     createdBy: row.created_by_user_id,
-    createdAt: row.joined_at ?? new Date().toISOString(),
+    createdAt: row.joined_at,
   };
 }
 

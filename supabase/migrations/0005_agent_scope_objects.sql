@@ -104,6 +104,28 @@ alter table public.team_member_api_keys
   add constraint team_member_api_keys_scopes_object_check
   check (jsonb_typeof(scopes) = 'object');
 
+with duplicate_agent_names as (
+  select
+    team_id,
+    member_id,
+    display_name,
+    row_number() over (
+      partition by team_id, lower(display_name)
+      order by joined_at, member_id
+    ) as duplicate_number
+  from public.team_members
+  where member_type = 'agent'
+    and display_name is not null
+)
+update public.team_members tm
+   set display_name = duplicate_agent_names.display_name
+                      || '-'
+                      || replace(tm.member_id::text, '-', '')
+  from duplicate_agent_names
+ where tm.team_id = duplicate_agent_names.team_id
+   and tm.member_id = duplicate_agent_names.member_id
+   and duplicate_agent_names.duplicate_number > 1;
+
 create unique index if not exists team_members_agent_display_name_unique
   on public.team_members (team_id, lower(display_name))
   where member_type = 'agent';

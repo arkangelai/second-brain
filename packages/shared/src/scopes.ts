@@ -37,52 +37,55 @@ export const ScopeTemplateNameSchema = z.enum([
 ]);
 export type ScopeTemplateName = z.infer<typeof ScopeTemplateNameSchema>;
 
+const defaultReadPaths = ["**/*"];
+const writablePaths = [
+  "01_thinking/notes/**",
+  "02_reference/sources/**",
+  "03_creating/drafts/**",
+  "00_inbox/**",
+];
+const appendPaths = ["01_thinking/**/*.md"];
+const readOps: AgentScopeOperation[] = ["search", "get"];
+const writeOps: AgentScopeOperation[] = [
+  "search",
+  "get",
+  "create",
+  "append",
+  "link",
+];
+const noIngestion = { urls: false, files: false };
+
 export const scopeTemplates = {
   reader: {
-    read_paths: ["**/*"],
+    read_paths: [...defaultReadPaths],
     write_paths: [],
     append_paths: [],
-    ops: ["search", "get"],
-    ingestion: { urls: false, files: false },
+    ops: [...readOps],
+    ingestion: { ...noIngestion },
     max_writes_per_hour: 0,
   },
   writer: {
-    read_paths: ["**/*"],
-    write_paths: [
-      "01_thinking/notes/**",
-      "02_reference/sources/**",
-      "03_creating/drafts/**",
-      "00_inbox/**",
-    ],
-    append_paths: ["01_thinking/**/*.md"],
-    ops: ["search", "get", "create", "append", "link"],
-    ingestion: { urls: false, files: false },
+    read_paths: [...defaultReadPaths],
+    write_paths: [...writablePaths],
+    append_paths: [...appendPaths],
+    ops: [...writeOps],
+    ingestion: { ...noIngestion },
     max_writes_per_hour: 500,
   },
   researcher: {
-    read_paths: ["**/*"],
-    write_paths: [
-      "01_thinking/notes/**",
-      "02_reference/sources/**",
-      "03_creating/drafts/**",
-      "00_inbox/**",
-    ],
-    append_paths: ["01_thinking/**/*.md"],
-    ops: ["search", "get", "create", "append", "link", "ingest"],
+    read_paths: [...defaultReadPaths],
+    write_paths: [...writablePaths],
+    append_paths: [...appendPaths],
+    ops: [...writeOps, "ingest"],
     ingestion: { urls: true, files: true },
     max_writes_per_hour: 500,
   },
   custom: {
-    read_paths: ["**/*"],
-    write_paths: [
-      "01_thinking/notes/**",
-      "02_reference/sources/**",
-      "03_creating/drafts/**",
-      "00_inbox/**",
-    ],
-    append_paths: ["01_thinking/**/*.md"],
-    ops: ["search", "get", "create", "append", "link"],
-    ingestion: { urls: false, files: false },
+    read_paths: [...defaultReadPaths],
+    write_paths: [...writablePaths],
+    append_paths: [...appendPaths],
+    ops: [...writeOps],
+    ingestion: { ...noIngestion },
     max_writes_per_hour: 500,
   },
 } satisfies Record<ScopeTemplateName, AgentScopes>;

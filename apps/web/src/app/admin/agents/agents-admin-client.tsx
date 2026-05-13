@@ -378,7 +378,7 @@ function CreateAgentForm({
 
   function parseScopes(): AgentScopes | null {
     try {
-      const parsedJson = JSON.parse(scopeJson) as unknown;
+      const parsedJson = JSON.parse(scopeJson);
       const parsedScopes = AgentScopesSchema.safeParse(parsedJson);
 
       if (!parsedScopes.success) {
