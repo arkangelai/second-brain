@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import {
   Ban,
   Check,
@@ -10,6 +11,7 @@ import {
   Loader2,
   Plus,
   RefreshCw,
+  ScrollText,
   ShieldCheck,
 } from "lucide-react";
 import {
@@ -312,6 +314,18 @@ function AgentsTable({
                 </td>
                 <td className="px-4 py-4">
                   <div className="flex justify-end gap-2">
+                    <Button
+                      asChild
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      title="View logs"
+                      aria-label={`View logs for ${agent.name}`}
+                    >
+                      <Link href={`/admin/audit?agent=${agent.id}`}>
+                        <ScrollText className="size-4" />
+                      </Link>
+                    </Button>
                     <Button
                       type="button"
                       variant="destructive"
