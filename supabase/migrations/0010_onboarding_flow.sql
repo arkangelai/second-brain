@@ -1,4 +1,4 @@
--- 20260513170100_onboarding_flow.sql
+-- 0010_onboarding_flow.sql
 -- Transactional helpers for first-team onboarding and authenticated
 -- acceptance of pending invitations.
 
