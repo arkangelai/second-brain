@@ -11,10 +11,18 @@ const serverSchema = z.object({
     .url(
       "must be a valid Postgres connection string (Supabase project settings → Database → Connection string)"
     ),
-  AI_GATEWAY_API_KEY: z.string().min(1, "must be set (Vercel dashboard → AI Gateway → API keys)"),
-  RESEND_API_KEY: z.string().min(1, "must be set (resend.com → API Keys)"),
-  APP_URL: z.string().url("must be a valid URL (e.g. https://second-brain.example.com)"),
-  EMAIL_FROM: z.string().email("must be a valid email address (e.g. noreply@example.com)"),
+  AI_GATEWAY_API_KEY: z
+    .string()
+    .min(1, "must be set (Vercel dashboard → AI Gateway → API keys)"),
+  RESEND_API_KEY: z
+    .string()
+    .min(1, "must be set (resend.com → API Keys)"),
+  APP_URL: z
+    .string()
+    .url("must be a valid URL (e.g. https://second-brain.example.com)"),
+  EMAIL_FROM: z
+    .string()
+    .email("must be a valid email address (e.g. noreply@example.com)"),
 });
 
 const publicSchema = z
@@ -30,11 +38,14 @@ const publicSchema = z
       .min(1, "must be set (display name shown in the UI)")
       .default(DEFAULT_PUBLIC_APP_NAME),
   })
-  .refine((env) => !looksLikeServiceRoleKey(env.NEXT_PUBLIC_SUPABASE_ANON_KEY), {
-    message:
-      "NEXT_PUBLIC_SUPABASE_ANON_KEY looks like a Supabase secret key (service_role JWT or sb_secret_*) — never expose it to the browser. Use the anon/publishable key instead.",
-    path: ["NEXT_PUBLIC_SUPABASE_ANON_KEY"],
-  });
+  .refine(
+    (env) => !looksLikeServiceRoleKey(env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+    {
+      message:
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY looks like a Supabase secret key (service_role JWT or sb_secret_*) — never expose it to the browser. Use the anon/publishable key instead.",
+      path: ["NEXT_PUBLIC_SUPABASE_ANON_KEY"],
+    }
+  );
 
 export type ServerEnv = z.infer<typeof serverSchema>;
 export type PublicEnv = z.infer<typeof publicSchema>;
@@ -117,7 +128,8 @@ export function parsePublicEnv(
 
 const isServer = typeof window === "undefined";
 const shouldSkipValidation =
-  typeof process !== "undefined" && process.env?.SKIP_ENV_VALIDATION === "1";
+  typeof process !== "undefined" &&
+  process.env?.SKIP_ENV_VALIDATION === "1";
 
 const emptyServerEnv = (): ServerEnv =>
   new Proxy({} as ServerEnv, {
@@ -175,14 +187,9 @@ export const publicEnv: PublicEnv = shouldSkipValidation
     });
 
 /**
- * Server-only env. Server validation is lazy so pages that only import
- * browser-safe config do not fail build-time module evaluation on unrelated
- * server-only variables. Reading any serverEnv property still validates the
- * whole server schema before returning a value.
- *
- * Importing this module on the client never validates the server schema;
- * accessing any property from the client throws to make accidental leakage
- * impossible.
+ * Server-only env. On the server, validation runs when a property is first
+ * read so build-time imports that only need publicEnv do not require secrets.
+ * Client reads still throw to prevent leakage.
  */
 export const serverEnv: ServerEnv = shouldSkipValidation
   ? ({} as ServerEnv)

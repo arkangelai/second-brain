@@ -102,12 +102,8 @@ async function findMatchingAgentKey(keys: ApiKeyRow[], secret: string): Promise<
     const expired = key.expires_at ? Date.parse(key.expires_at) <= now : false;
     if (expired || key.revoked_at) continue;
 
-    try {
-      if (await argon2.verify(key.key_hash, secret)) {
-        match = key;
-      }
-    } catch {
-      continue;
+    if (await argon2.verify(key.key_hash, secret)) {
+      match = key;
     }
   }
 
