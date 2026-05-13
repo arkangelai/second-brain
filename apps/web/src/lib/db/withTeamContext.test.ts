@@ -12,6 +12,22 @@ const TEST_TEAM_ID = "00000000-0000-0000-0000-0000000000aa";
 
 const describeIfDb = dbUrl ? describe : describe.skip;
 
+describe("withTeamContext validation", () => {
+  it("requires a user id for the default human path", async () => {
+    await expect(
+      withTeamContext(TEST_TEAM_ID, async () => undefined),
+    ).rejects.toThrow(/userId is required/);
+  });
+
+  it("rejects an invalid human user id before opening a connection", async () => {
+    await expect(
+      withTeamContext(TEST_TEAM_ID, async () => undefined, {
+        userId: "not-a-uuid",
+      }),
+    ).rejects.toThrow(/userId is not a UUID/);
+  });
+});
+
 describeIfDb("withTeamContext (integration)", () => {
   afterAll(async () => {
     await __resetPoolForTests();

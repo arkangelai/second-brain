@@ -7,6 +7,10 @@ export type WithTeamContextOptions = {
   // app.team_id directly. Used by the agent-auth path, where the agent token
   // has already been verified by argon2id and the team_id is trusted.
   trusted?: boolean;
+  // Required for the default human path. Raw pg connections do not inherit
+  // Supabase's PostgREST JWT claim settings, so we set the authenticated
+  // user id on the transaction before calling app_set_team().
+  userId?: string;
 };
 
 // Opens a transaction, sets `app.team_id` for the current transaction (the
@@ -26,6 +30,12 @@ export async function withTeamContext<T>(
   if (!isUuid(teamId)) {
     throw new Error(`withTeamContext: teamId is not a UUID (${teamId})`);
   }
+  if (!options.trusted && !options.userId) {
+    throw new Error("withTeamContext: userId is required unless trusted is true");
+  }
+  if (options.userId && !isUuid(options.userId)) {
+    throw new Error(`withTeamContext: userId is not a UUID (${options.userId})`);
+  }
 
   const pool = getPool();
   const client = await pool.connect();
@@ -38,8 +48,14 @@ export async function withTeamContext<T>(
       // because the caller has already proven team ownership of the request.
       await client.query("SELECT set_config('app.team_id', $1, true)", [teamId]);
     } else {
-      // Human path: app_set_team() verifies the caller (via auth.uid()) is a
-      // member of the team before setting the GUC.
+      // Human path: set the transaction-local auth claim that auth.uid() reads,
+      // then let app_set_team() verify membership before setting app.team_id.
+      await client.query("SELECT set_config('request.jwt.claim.sub', $1, true)", [
+        options.userId,
+      ]);
+      await client.query(
+        "SELECT set_config('request.jwt.claim.role', 'authenticated', true)",
+      );
       await client.query("SELECT public.app_set_team($1::uuid)", [teamId]);
     }
 
