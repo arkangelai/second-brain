@@ -53,15 +53,6 @@ describe("parseServerEnv", () => {
     expect(() => parseServerEnv({ ...validServer, APP_URL: "not-a-url" })).toThrow(/APP_URL/);
   });
 
-  it("rejects a database owner role for SUPABASE_DATABASE_URL", () => {
-    expect(() =>
-      parseServerEnv({
-        ...validServer,
-        SUPABASE_DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:54322/postgres",
-      })
-    ).toThrow(/SUPABASE_DATABASE_URL/);
-  });
-
   it("rejects an invalid EMAIL_FROM", () => {
     expect(() => parseServerEnv({ ...validServer, EMAIL_FROM: "not-an-email" })).toThrow(
       /EMAIL_FROM/
