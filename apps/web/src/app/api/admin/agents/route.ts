@@ -25,7 +25,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const context = getAdminAgentsContext(request);
-    const payload = parseCreateAgentPayload(await request.json());
+    const payload = parseCreateAgentPayload(await readJsonRequestBody(request));
     const { agent, plaintextKey } = await createAgent(context, payload);
 
     return NextResponse.json(
@@ -37,6 +37,14 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     return jsonError(error);
+  }
+}
+
+async function readJsonRequestBody(request: Request): Promise<unknown> {
+  try {
+    return await request.json();
+  } catch {
+    throw new RequestError(400, "Request body must be valid JSON.");
   }
 }
 
