@@ -127,8 +127,16 @@ insert into public.team_members (
   'member',
   '00000000-0000-0000-0000-000000000001',
   'dev-cli',
-  '["read","write"]'::jsonb,
+  '{
+    "read_paths": ["**/*"],
+    "write_paths": ["01_thinking/notes/**", "02_reference/sources/**", "03_creating/drafts/**", "00_inbox/**"],
+    "append_paths": ["01_thinking/**/*.md"],
+    "ops": ["search", "get", "create", "append", "link"],
+    "ingestion": {"urls": false, "files": false},
+    "max_writes_per_hour": 500
+  }'::jsonb,
   '00000000-0000-0000-0000-000000000001',
   true
 )
-on conflict (team_id, member_id) do nothing;
+on conflict (team_id, member_id) do update
+   set scopes = excluded.scopes;

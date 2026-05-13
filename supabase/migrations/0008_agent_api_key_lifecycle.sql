@@ -1,4 +1,4 @@
--- 20260513164015_agent_api_key_lifecycle.sql
+-- 0008_agent_api_key_lifecycle.sql
 -- Agent API key lifecycle support: auth failure tracking, audit logs, and
 -- JSON scope shapes compatible with object-based path/operation grants.
 
