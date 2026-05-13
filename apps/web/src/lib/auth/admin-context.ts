@@ -61,7 +61,9 @@ export async function requireAdminContext(
   }
 
   const teamId =
-    requestedTeamId ?? profile?.default_team_id ?? (await firstTeamId(user.id));
+    requestedTeamId ??
+    profile?.default_team_id ??
+    (await firstAdminTeamId(user.id));
 
   if (!teamId) {
     throw new HttpError(403, "No active team found", "team_required");
@@ -101,13 +103,16 @@ export async function requireAdminContext(
   };
 }
 
-async function firstTeamId(userId: string): Promise<string | null> {
+async function firstAdminTeamId(userId: string): Promise<string | null> {
   const admin = createAdminSupabaseClient();
   const { data, error } = await admin
     .from("team_members")
     .select("team_id")
     .eq("member_type", "human")
     .eq("user_id", userId)
+    .in("role", ["owner", "admin"])
+    .order("joined_at", { ascending: true })
+    .order("team_id", { ascending: true })
     .limit(1)
     .maybeSingle<Pick<TeamMemberRow, "team_id">>();
 

@@ -2,6 +2,11 @@ import { redirect } from "next/navigation";
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
+interface MembershipRow {
+  team_id: string;
+  role: string;
+}
+
 interface AdminTeamPageProps {
   searchParams: Promise<{
     invite?: string;
@@ -27,13 +32,15 @@ export default async function AdminTeamPage({
     .eq("user_id", user.id)
     .maybeSingle<{ default_team_id: string | null }>();
 
-  const { data: membership } = await supabase
-    .from("team_members")
-    .select("team_id, role")
-    .eq("member_type", "human")
-    .eq("user_id", user.id)
-    .eq("team_id", profile?.default_team_id ?? "")
-    .maybeSingle<{ team_id: string; role: string }>();
+  const { data: membership } = profile?.default_team_id
+    ? await supabase
+        .from("team_members")
+        .select("team_id, role")
+        .eq("member_type", "human")
+        .eq("user_id", user.id)
+        .eq("team_id", profile.default_team_id)
+        .maybeSingle<MembershipRow>()
+    : { data: null };
 
   const { data: fallbackMembership } = membership
     ? { data: null }
@@ -42,8 +49,10 @@ export default async function AdminTeamPage({
         .select("team_id, role")
         .eq("member_type", "human")
         .eq("user_id", user.id)
+        .order("joined_at", { ascending: true })
+        .order("team_id", { ascending: true })
         .limit(1)
-        .maybeSingle<{ team_id: string; role: string }>();
+        .maybeSingle<MembershipRow>();
 
   const activeMembership = membership ?? fallbackMembership;
 
