@@ -5,7 +5,7 @@ import argon2 from "argon2";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { Json, TeamRole } from "@/lib/supabase/types";
 
-import { getBearerToken, parseAgentApiKey } from "./api-key";
+import { getBearerToken, parseAgentApiKey, type ParsedAgentApiKey } from "./api-key";
 import {
   resolveHumanPrincipal,
   type HumanPrincipal,
@@ -37,18 +37,18 @@ export async function resolveRequestPrincipal(
   request: HumanPrincipalRequest
 ): Promise<Principal | null> {
   const bearerToken = getBearerToken(request.headers.get("authorization"));
+  const parsedAgentKey = bearerToken ? parseAgentApiKey(bearerToken) : null;
 
-  if (bearerToken) {
-    return resolveAgentPrincipal(bearerToken);
+  if (parsedAgentKey) {
+    return resolveAgentPrincipal(parsedAgentKey);
   }
 
   return resolveHumanPrincipal(request);
 }
 
-async function resolveAgentPrincipal(token: string): Promise<AgentPrincipal | null> {
-  const parsed = parseAgentApiKey(token);
-  if (!parsed) return null;
-
+async function resolveAgentPrincipal(
+  parsed: ParsedAgentApiKey
+): Promise<AgentPrincipal | null> {
   const admin = createSupabaseAdminClient({ routeHandler: true });
   const { data: team } = await admin
     .from("teams")

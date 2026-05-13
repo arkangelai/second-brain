@@ -33,6 +33,14 @@ describe("parseAgentApiKey", () => {
     });
   });
 
+  test("parses team slug hints containing underscores", () => {
+    expect(parseAgentApiKey("sb_live_acme_research_key123_secret")).toEqual({
+      teamSlug: "acme_research",
+      keyPrefix: "key123",
+      secret: "secret",
+    });
+  });
+
   test("rejects malformed keys", () => {
     expect(parseAgentApiKey("sb_test_acme_secret")).toBeNull();
     expect(parseAgentApiKey("sb_live__secret")).toBeNull();

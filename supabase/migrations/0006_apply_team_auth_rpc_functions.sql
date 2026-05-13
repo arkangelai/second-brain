@@ -110,7 +110,7 @@ grant execute on function public.app_resolve_human_principal(uuid) to authentica
 
 create or replace function public.app_team_member_json(
   member public.team_members,
-  current_user uuid
+  viewer_user_id uuid
 )
 returns jsonb
 language sql
@@ -125,7 +125,7 @@ as $$
     'avatarUrl', user_profiles.avatar_url,
     'role', (member).role,
     'joinedAt', (member).joined_at,
-    'isCurrentUser', (member).user_id = current_user
+    'isCurrentUser', (member).user_id = viewer_user_id
   )
   from (select 1) seed
   left join public.user_profiles on user_profiles.user_id = (member).user_id
