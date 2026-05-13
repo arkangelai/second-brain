@@ -8,7 +8,11 @@ const serverSchema = z.object({
     .string()
     .url(
       "must be a valid Postgres connection string (Supabase project settings → Database → Connection string)"
-    ),
+    )
+    .refine(usesRlsEnforcedDatabaseRole, {
+      message:
+        "must use a non-owner database role that does not bypass RLS (do not use postgres, supabase_admin, or service_role)",
+    }),
   AI_GATEWAY_API_KEY: z.string().min(1, "must be set (Vercel dashboard → AI Gateway → API keys)"),
   RESEND_API_KEY: z.string().min(1, "must be set (resend.com → API Keys)"),
   APP_URL: z.string().url("must be a valid URL (e.g. https://second-brain.example.com)"),
@@ -67,6 +71,18 @@ function decodeBase64Url(value: string): string {
   const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
   const padding = (4 - (normalized.length % 4)) % 4;
   return atob(normalized + "=".repeat(padding));
+}
+
+function usesRlsEnforcedDatabaseRole(value: string): boolean {
+  try {
+    const username = decodeURIComponent(new URL(value).username).toLowerCase();
+    if (!username) return false;
+
+    const baseUsername = username.split(".")[0];
+    return !["postgres", "supabase_admin", "service_role"].includes(baseUsername);
+  } catch {
+    return true;
+  }
 }
 
 function formatZodError(scope: string, error: z.ZodError): string {

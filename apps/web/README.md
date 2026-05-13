@@ -31,7 +31,12 @@ into `apps/web/.env.local`:
 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key from `supabase start`>
 SUPABASE_SECRET_KEY=<service-role key from `supabase start`>
+SUPABASE_DATABASE_URL=<connection string for a non-owner app role, not postgres>
 ```
+
+`SUPABASE_DATABASE_URL` is used by helpers that rely on RLS. Provision a
+dedicated login role for this value, make it a member of `authenticated`, and
+do not use the Supabase `postgres` owner role or any role with `BYPASSRLS`.
 
 ### Reset the database
 

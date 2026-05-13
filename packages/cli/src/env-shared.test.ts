@@ -3,7 +3,7 @@ import { parsePublicEnv, parseServerEnv } from "@second-brain/shared/env";
 
 const validServer = {
   SUPABASE_SECRET_KEY: "sb_secret_abc123",
-  SUPABASE_DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:54322/postgres",
+  SUPABASE_DATABASE_URL: "postgresql://second_brain_app:password@127.0.0.1:54322/postgres",
   AI_GATEWAY_API_KEY: "gw_abc",
   RESEND_API_KEY: "re_abc",
   APP_URL: "https://second-brain.example.com",
@@ -51,6 +51,15 @@ describe("parseServerEnv", () => {
 
   it("rejects an invalid APP_URL", () => {
     expect(() => parseServerEnv({ ...validServer, APP_URL: "not-a-url" })).toThrow(/APP_URL/);
+  });
+
+  it("rejects a database owner role for SUPABASE_DATABASE_URL", () => {
+    expect(() =>
+      parseServerEnv({
+        ...validServer,
+        SUPABASE_DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:54322/postgres",
+      })
+    ).toThrow(/SUPABASE_DATABASE_URL/);
   });
 
   it("rejects an invalid EMAIL_FROM", () => {

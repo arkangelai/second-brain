@@ -2,18 +2,15 @@ import "server-only";
 
 import argon2 from "argon2";
 
-import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { Json, TeamRole } from "@/lib/supabase/types";
 
 import { getBearerToken, parseAgentApiKey } from "./api-key";
-
-export type HumanPrincipal = {
-  kind: "human";
-  id: string;
-  team_id: string;
-  role: TeamRole;
-};
+import {
+  resolveHumanPrincipal,
+  type HumanPrincipal,
+  type HumanPrincipalRequest,
+} from "./human-principal";
 
 export type AgentPrincipal = {
   kind: "agent";
@@ -25,17 +22,6 @@ export type AgentPrincipal = {
 
 export type Principal = HumanPrincipal | AgentPrincipal;
 
-type MembershipRow = {
-  team_id: string;
-  member_id: string;
-  member_type: "human" | "agent";
-  user_id: string | null;
-  role: TeamRole;
-  scopes: Json;
-  active: boolean;
-  revoked_at: string | null;
-};
-
 type ApiKeyRow = {
   id: string;
   team_id: string;
@@ -46,7 +32,9 @@ type ApiKeyRow = {
   revoked_at: string | null;
 };
 
-export async function resolveRequestPrincipal(request: Request): Promise<Principal | null> {
+export async function resolveRequestPrincipal(
+  request: HumanPrincipalRequest
+): Promise<Principal | null> {
   const bearerToken = getBearerToken(request.headers.get("authorization"));
 
   if (bearerToken) {
@@ -54,66 +42,6 @@ export async function resolveRequestPrincipal(request: Request): Promise<Princip
   }
 
   return resolveHumanPrincipal(request);
-}
-
-async function resolveHumanPrincipal(request: Request): Promise<HumanPrincipal | null> {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (error || !user) return null;
-
-  const requestedTeamId = request.headers.get("x-team-id");
-  const defaultTeamId = requestedTeamId ? null : await getDefaultTeamId(user.id);
-
-  const membership = await findHumanMembership(user.id, requestedTeamId ?? defaultTeamId);
-
-  if (!membership) return null;
-
-  return {
-    kind: "human",
-    id: user.id,
-    team_id: membership.team_id,
-    role: membership.role,
-  };
-}
-
-async function getDefaultTeamId(userId: string): Promise<string | null> {
-  const supabase = await createServerSupabaseClient();
-  const { data } = await supabase
-    .from("user_profiles")
-    .select("default_team_id")
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  return data?.default_team_id ?? null;
-}
-
-async function findHumanMembership(
-  userId: string,
-  teamId: string | null
-): Promise<MembershipRow | null> {
-  const supabase = await createServerSupabaseClient();
-  let query = supabase
-    .from("team_members")
-    .select("team_id, member_id, member_type, user_id, role, scopes, active, revoked_at")
-    .eq("user_id", userId)
-    .eq("member_type", "human")
-    .eq("active", true)
-    .is("revoked_at", null)
-    .order("joined_at", { ascending: true })
-    .limit(1);
-
-  if (teamId) {
-    query = query.eq("team_id", teamId);
-  }
-
-  const { data, error } = await query.maybeSingle();
-  if (error || !data) return null;
-
-  return data;
 }
 
 async function resolveAgentPrincipal(token: string): Promise<AgentPrincipal | null> {
