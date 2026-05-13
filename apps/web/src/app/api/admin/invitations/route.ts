@@ -7,7 +7,7 @@ import {
 } from "@/lib/auth/admin-context";
 import { sendEmail } from "@/lib/email/client";
 import { InvitationEmail } from "@/lib/email/templates/invitation";
-import { toErrorResponse } from "@/lib/http/errors";
+import { HttpError, toErrorResponse } from "@/lib/http/errors";
 import {
   generateInvitationToken,
   hashInvitationToken,
@@ -84,8 +84,9 @@ export async function POST(request: Request) {
           .from("team_invitations")
           .update(payload)
           .eq("id", existing.id)
+          .is("accepted_at", null)
           .select(invitationSelect)
-          .single()
+          .maybeSingle()
       : admin
           .from("team_invitations")
           .insert(payload)
@@ -96,6 +97,14 @@ export async function POST(request: Request) {
 
     if (invitationError) {
       throw invitationError;
+    }
+
+    if (!invitation) {
+      throw new HttpError(
+        409,
+        "Invitation was already accepted",
+        "invite_already_accepted"
+      );
     }
 
     const subject = `${context.inviterName} invited you to the ${context.team.name} brain on Second Brain`;

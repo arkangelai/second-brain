@@ -42,9 +42,10 @@ begin
     return;
   end if;
 
-  insert into public.user_profiles (user_id)
-  values (accepting_user)
-  on conflict (user_id) do nothing;
+  insert into public.user_profiles (user_id, default_team_id)
+  values (accepting_user, invitation.team_id)
+  on conflict (user_id) do update
+     set default_team_id = excluded.default_team_id;
 
   insert into public.team_members (
     team_id,

@@ -10,6 +10,7 @@ interface MembershipRow {
 interface AdminTeamPageProps {
   searchParams: Promise<{
     invite?: string;
+    team?: string;
   }>;
 }
 
@@ -26,35 +27,51 @@ export default async function AdminTeamPage({
     redirect("/login?next=/admin/team");
   }
 
-  const { data: profile } = await supabase
-    .from("user_profiles")
-    .select("default_team_id")
-    .eq("user_id", user.id)
-    .maybeSingle<{ default_team_id: string | null }>();
-
-  const { data: membership } = profile?.default_team_id
+  const requestedTeamId = normalizeTeamId(params.team);
+  const { data: requestedMembership } = requestedTeamId
     ? await supabase
         .from("team_members")
         .select("team_id, role")
         .eq("member_type", "human")
         .eq("user_id", user.id)
-        .eq("team_id", profile.default_team_id)
+        .eq("team_id", requestedTeamId)
         .maybeSingle<MembershipRow>()
     : { data: null };
 
-  const { data: fallbackMembership } = membership
+  const { data: profile } = requestedMembership
     ? { data: null }
     : await supabase
-        .from("team_members")
-        .select("team_id, role")
-        .eq("member_type", "human")
+        .from("user_profiles")
+        .select("default_team_id")
         .eq("user_id", user.id)
-        .order("joined_at", { ascending: true })
-        .order("team_id", { ascending: true })
-        .limit(1)
-        .maybeSingle<MembershipRow>();
+        .maybeSingle<{ default_team_id: string | null }>();
 
-  const activeMembership = membership ?? fallbackMembership;
+  const { data: defaultMembership } =
+    !requestedMembership && profile?.default_team_id
+      ? await supabase
+          .from("team_members")
+          .select("team_id, role")
+          .eq("member_type", "human")
+          .eq("user_id", user.id)
+          .eq("team_id", profile.default_team_id)
+          .maybeSingle<MembershipRow>()
+      : { data: null };
+
+  const { data: fallbackMembership } =
+    requestedMembership || defaultMembership
+      ? { data: null }
+      : await supabase
+          .from("team_members")
+          .select("team_id, role")
+          .eq("member_type", "human")
+          .eq("user_id", user.id)
+          .order("joined_at", { ascending: true })
+          .order("team_id", { ascending: true })
+          .limit(1)
+          .maybeSingle<MembershipRow>();
+
+  const activeMembership =
+    requestedMembership ?? defaultMembership ?? fallbackMembership;
 
   if (!activeMembership) {
     return (
@@ -88,4 +105,17 @@ export default async function AdminTeamPage({
       </header>
     </main>
   );
+}
+
+function normalizeTeamId(value: string | undefined): string | null {
+  if (
+    !value ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      value
+    )
+  ) {
+    return null;
+  }
+
+  return value;
 }

@@ -61,3 +61,18 @@ Implement the invitation flow in the web app, keep auth primitives narrow, and v
 **Learnings:**
 - The base schema already has `team_invitations`, but app-level Supabase auth/client plumbing is absent because #21 is still open.
 - Runtime verification of invite acceptance needs a running Supabase stack and valid `apps/web/.env.local` values.
+
+### 2026-05-13 - Review Follow-up
+
+**By:** Codex
+
+**Actions:**
+- Addressed code review finding where accepting an invite to a non-default team could redirect to `/admin/team` and show the user's previous default team.
+- Updated invite acceptance redirect to include the accepted `team_id`.
+- Updated `/admin/team` to prefer a requested `team` query param when it matches a human membership for the signed-in user, then fall back to default team and earliest membership.
+- Updated invitation acceptance RPC to set `user_profiles.default_team_id` to the accepted team.
+- Guarded pending reinvite updates with `accepted_at is null` so a concurrently accepted invite cannot be rewritten and emailed as a false success.
+- Ran `SKIP_ENV_VALIDATION=1 bun run --filter='./apps/web' typecheck`: pass.
+- Ran `SKIP_ENV_VALIDATION=1 bun run test`: pass.
+- Ran `SKIP_ENV_VALIDATION=1 bun run lint`: pass with 9 pre-existing warnings in unrelated CLI files.
+- Ran `SKIP_ENV_VALIDATION=1 bun run --filter='./apps/web' build`: pass.

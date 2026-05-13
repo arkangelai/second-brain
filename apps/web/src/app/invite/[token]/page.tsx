@@ -40,8 +40,12 @@ export default async function InvitePage({
 
   if (user) {
     try {
-      await acceptInvitationToken(token, user.id);
-      redirect("/admin/team?invite=accepted");
+      const result = await acceptInvitationToken(token, user.id);
+      const teamParam = result.team_id
+        ? `&team=${encodeURIComponent(result.team_id)}`
+        : "";
+
+      redirect(`/admin/team?invite=accepted${teamParam}`);
     } catch (error) {
       if (error instanceof HttpError && error.status === 410) {
         return <InviteGone />;
