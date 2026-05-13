@@ -58,8 +58,9 @@ type AgentAuthQuery = {
 
 let supabaseStub: SupabaseStub;
 
-mock.module("@/lib/supabase/server", () => ({
-  getSupabaseAdminClient: () => supabaseStub.client,
+mock.module("server-only", () => ({}));
+mock.module("@/lib/supabase/admin", () => ({
+  createSupabaseAdminClient: () => supabaseStub.client,
 }));
 
 const { authenticateAgentRequest } = await import("./agentAuth");

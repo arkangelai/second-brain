@@ -1,23 +1,33 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import "server-only";
 
-let adminClient: SupabaseClient | null = null;
+import { createServerClient } from "@supabase/ssr";
+import { publicEnv } from "@second-brain/shared/env";
+import { cookies } from "next/headers";
 
-export function getSupabaseAdminClient(): SupabaseClient {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SECRET_KEY;
+import type { Database } from "./types";
 
-  if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error(
-      "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SECRET_KEY environment variable",
-    );
-  }
+export async function createServerSupabaseClient() {
+  const cookieStore = await cookies();
 
-  adminClient ??= createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-
-  return adminClient;
+  return createServerClient<Database>(
+    publicEnv.NEXT_PUBLIC_SUPABASE_URL,
+    publicEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          } catch {
+            // Server Components can read but not mutate cookies. Route Handlers
+            // and Server Actions still set refreshed Supabase cookies here.
+          }
+        },
+      },
+    }
+  );
 }

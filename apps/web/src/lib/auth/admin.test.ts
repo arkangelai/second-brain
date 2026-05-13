@@ -44,8 +44,9 @@ type AdminQuery = {
 
 let supabaseStub: SupabaseStub;
 
-mock.module("@/lib/supabase/server", () => ({
-  getSupabaseAdminClient: () => supabaseStub.client,
+mock.module("server-only", () => ({}));
+mock.module("@/lib/supabase/admin", () => ({
+  createSupabaseAdminClient: () => supabaseStub.client,
 }));
 
 const { resolveAdminContext } = await import("./admin");

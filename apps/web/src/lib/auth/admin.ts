@@ -1,7 +1,7 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 
 import { bearerToken } from "./request";
-import { getSupabaseAdminClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export type Team = {
   id: string;
@@ -28,7 +28,7 @@ export async function resolveAdminContext(
   const token = bearerToken(request);
   if (!token) return { error: "Missing bearer token", status: 401 };
 
-  const supabase = getSupabaseAdminClient();
+  const supabase = createSupabaseAdminClient({ routeHandler: true });
   const { data: userData, error: userError } = await supabase.auth.getUser(token);
   const user = userData.user;
 

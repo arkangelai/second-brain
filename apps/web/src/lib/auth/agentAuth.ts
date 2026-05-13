@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { parseAgentKey, verifyKey } from "./agentKeys";
 import { bearerToken, clientIp } from "./request";
-import { getSupabaseAdminClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const DEFAULT_FAILURE_LIMIT = 10;
 const DEFAULT_FAILURE_WINDOW_MINUTES = 5;
@@ -43,7 +43,7 @@ export async function authenticateAgentRequest(
   request: Request,
 ): Promise<AgentAuthContext | null> {
   const plaintext = bearerToken(request) || request.headers.get("x-agent-key");
-  const supabase = getSupabaseAdminClient();
+  const supabase = createSupabaseAdminClient({ routeHandler: true });
 
   if (!plaintext) {
     await logAuthFailure(supabase, request, { reason: "missing_key" });
