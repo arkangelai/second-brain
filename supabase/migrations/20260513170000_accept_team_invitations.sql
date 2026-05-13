@@ -1,4 +1,4 @@
--- 0005_accept_team_invitations.sql
+-- 20260513170000_accept_team_invitations.sql
 -- Atomic invitation acceptance for public magic-link invite URLs.
 
 with ranked_pending_invitations as (
