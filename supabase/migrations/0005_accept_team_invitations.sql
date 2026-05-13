@@ -16,6 +16,7 @@ set search_path = public, pg_temp
 as $$
 declare
   invitation public.team_invitations%rowtype;
+  effective_role text;
   user_email text;
 begin
   select *
@@ -47,7 +48,7 @@ begin
   on conflict (user_id) do update
      set default_team_id = excluded.default_team_id;
 
-  insert into public.team_members (
+  insert into public.team_members as tm (
     team_id,
     member_id,
     member_type,
@@ -64,22 +65,23 @@ begin
   )
   on conflict (team_id, member_id) do update
      set role = case
-           when public.team_members.role = 'owner'
+           when tm.role = 'owner'
             and excluded.role <> 'owner'
-             then public.team_members.role
+             then tm.role
            else excluded.role
          end,
          invited_by = excluded.invited_by,
          active = true,
          revoked_at = null
-   where public.team_members.member_type = 'human';
+   where tm.member_type = 'human'
+   returning tm.role into effective_role;
 
   update public.team_invitations
      set accepted_at = now(),
          accepted_by = accepting_user
    where id = invitation.id;
 
-  return query select 'accepted'::text, invitation.team_id, invitation.role;
+  return query select 'accepted'::text, invitation.team_id, effective_role;
 end;
 $$;
 

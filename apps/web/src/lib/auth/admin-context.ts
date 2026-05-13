@@ -60,7 +60,7 @@ export async function requireAdminContext(
     throw new HttpError(500, "Unable to load user profile", "profile_error");
   }
 
-  const teamId =
+  let teamId =
     requestedTeamId ??
     profile?.default_team_id ??
     (await firstAdminTeamId(user.id));
@@ -69,19 +69,18 @@ export async function requireAdminContext(
     throw new HttpError(403, "No active team found", "team_required");
   }
 
-  const { data: member, error: memberError } = await admin
-    .from("team_members")
-    .select("team_id, role")
-    .eq("team_id", teamId)
-    .eq("member_type", "human")
-    .eq("user_id", user.id)
-    .maybeSingle<TeamMemberRow>();
+  let member = await teamMembership(user.id, teamId);
 
-  if (memberError) {
-    throw new HttpError(500, "Unable to load team membership", "membership_error");
+  if (!requestedTeamId && !isAdminRole(member?.role)) {
+    const adminTeamId = await firstAdminTeamId(user.id);
+
+    if (adminTeamId && adminTeamId !== teamId) {
+      teamId = adminTeamId;
+      member = await teamMembership(user.id, teamId);
+    }
   }
 
-  if (!member || (member.role !== "owner" && member.role !== "admin")) {
+  if (!member || !isAdminRole(member.role)) {
     throw new HttpError(403, "Owner or admin role required", "forbidden");
   }
 
@@ -103,6 +102,26 @@ export async function requireAdminContext(
   };
 }
 
+async function teamMembership(
+  userId: string,
+  teamId: string
+): Promise<TeamMemberRow | null> {
+  const admin = createAdminSupabaseClient();
+  const { data, error } = await admin
+    .from("team_members")
+    .select("team_id, role")
+    .eq("team_id", teamId)
+    .eq("member_type", "human")
+    .eq("user_id", userId)
+    .maybeSingle<TeamMemberRow>();
+
+  if (error) {
+    throw new HttpError(500, "Unable to load team membership", "membership_error");
+  }
+
+  return data ?? null;
+}
+
 async function firstAdminTeamId(userId: string): Promise<string | null> {
   const admin = createAdminSupabaseClient();
   const { data, error } = await admin
@@ -121,6 +140,12 @@ async function firstAdminTeamId(userId: string): Promise<string | null> {
   }
 
   return data?.team_id ?? null;
+}
+
+function isAdminRole(
+  role: TeamRole | null | undefined
+): role is Extract<TeamRole, "owner" | "admin"> {
+  return role === "owner" || role === "admin";
 }
 
 export function assertCanInviteRole(
