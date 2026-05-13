@@ -34,6 +34,9 @@ interface ProfileRow {
   default_team_id: string | null;
 }
 
+const uuidPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function requireAdminContext(
   request: Request
 ): Promise<AdminContext> {
@@ -48,7 +51,7 @@ export async function requireAdminContext(
   }
 
   const admin = createAdminSupabaseClient();
-  const requestedTeamId = request.headers.get("x-team-id");
+  const requestedTeamId = requestedTeamIdFrom(request);
 
   const { data: profile, error: profileError } = await admin
     .from("user_profiles")
@@ -146,6 +149,22 @@ function isAdminRole(
   role: TeamRole | null | undefined
 ): role is Extract<TeamRole, "owner" | "admin"> {
   return role === "owner" || role === "admin";
+}
+
+function requestedTeamIdFrom(request: Request): string | null {
+  const requestedTeamId = request.headers.get("x-team-id");
+
+  if (requestedTeamId === null) {
+    return null;
+  }
+
+  const normalizedTeamId = requestedTeamId.trim();
+
+  if (!uuidPattern.test(normalizedTeamId)) {
+    throw new HttpError(400, "Invalid team id", "invalid_team_id");
+  }
+
+  return normalizedTeamId;
 }
 
 export function assertCanInviteRole(
