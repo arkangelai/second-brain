@@ -6,7 +6,6 @@ import {
 
 const validServer = {
   SUPABASE_SECRET_KEY: "sb_secret_abc123",
-  SUPABASE_DATABASE_URL: "postgresql://second_brain_app:password@127.0.0.1:54322/postgres",
   AI_GATEWAY_API_KEY: "gw_abc",
   RESEND_API_KEY: "re_abc",
   APP_URL: "https://second-brain.example.com",
@@ -43,7 +42,6 @@ describe("parseServerEnv", () => {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       expect(message).toContain("SUPABASE_SECRET_KEY");
-      expect(message).toContain("SUPABASE_DATABASE_URL");
       expect(message).toContain("AI_GATEWAY_API_KEY");
       expect(message).toContain("RESEND_API_KEY");
       expect(message).toContain("APP_URL");

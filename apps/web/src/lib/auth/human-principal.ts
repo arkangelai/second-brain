@@ -1,13 +1,15 @@
 import "server-only";
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import type { Json, TeamRole } from "@/lib/supabase/types";
+import type { TeamRole } from "@/lib/supabase/types";
 
 export type HumanPrincipal = {
   kind: "human";
   id: string;
   team_id: string;
   role: TeamRole;
+  team_slug: string;
+  team_name: string;
 };
 
 type HeaderSource = {
@@ -18,16 +20,16 @@ export type HumanPrincipalRequest = {
   headers: HeaderSource;
 };
 
-type MembershipRow = {
+type HumanPrincipalRow = {
+  id: string;
   team_id: string;
-  member_id: string;
-  member_type: "human" | "agent";
-  user_id: string | null;
   role: TeamRole;
-  scopes: Json;
-  active: boolean;
-  revoked_at: string | null;
+  team_slug: string;
+  team_name: string;
 };
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export async function resolveHumanPrincipal(
   request: HumanPrincipalRequest
@@ -40,63 +42,30 @@ export async function resolveHumanPrincipal(
 
   if (error || !user) return null;
 
-  const requestedTeamId = request.headers.get("x-team-id");
+  const requestedTeamId = normalizeRequestedTeamId(request.headers.get("x-team-id"));
+  if (requestedTeamId === false) return null;
 
-  if (requestedTeamId) {
-    return toHumanPrincipal(user.id, await findHumanMembership(user.id, requestedTeamId));
-  }
-
-  const defaultTeamId = await getDefaultTeamId(user.id);
-  const membership =
-    (defaultTeamId ? await findHumanMembership(user.id, defaultTeamId) : null) ??
-    (await findHumanMembership(user.id, null));
-
-  return toHumanPrincipal(user.id, membership);
-}
-
-async function getDefaultTeamId(userId: string): Promise<string | null> {
-  const supabase = await createServerSupabaseClient();
-  const { data } = await supabase
-    .from("user_profiles")
-    .select("default_team_id")
-    .eq("user_id", userId)
+  const { data, error: rpcError } = await supabase
+    .rpc("app_resolve_human_principal", { requested_team: requestedTeamId })
     .maybeSingle();
 
-  return data?.default_team_id ?? null;
+  if (rpcError || !data) return null;
+
+  return toHumanPrincipal(data);
 }
 
-async function findHumanMembership(
-  userId: string,
-  teamId: string | null
-): Promise<MembershipRow | null> {
-  const supabase = await createServerSupabaseClient();
-  let query = supabase
-    .from("team_members")
-    .select("team_id, member_id, member_type, user_id, role, scopes, active, revoked_at")
-    .eq("user_id", userId)
-    .eq("member_type", "human")
-    .eq("active", true)
-    .is("revoked_at", null)
-    .order("joined_at", { ascending: true })
-    .limit(1);
-
-  if (teamId) {
-    query = query.eq("team_id", teamId);
-  }
-
-  const { data, error } = await query.maybeSingle();
-  if (error || !data) return null;
-
-  return data;
+function normalizeRequestedTeamId(value: string | null): string | null | false {
+  if (!value) return null;
+  return UUID_RE.test(value) ? value : false;
 }
 
-function toHumanPrincipal(userId: string, membership: MembershipRow | null): HumanPrincipal | null {
-  if (!membership) return null;
-
+function toHumanPrincipal(row: HumanPrincipalRow): HumanPrincipal {
   return {
     kind: "human",
-    id: userId,
-    team_id: membership.team_id,
-    role: membership.role,
+    id: row.id,
+    team_id: row.team_id,
+    role: row.role,
+    team_slug: row.team_slug,
+    team_name: row.team_name,
   };
 }

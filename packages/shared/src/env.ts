@@ -6,11 +6,6 @@ const serverSchema = z.object({
   SUPABASE_SECRET_KEY: z
     .string()
     .min(1, "must be set (Supabase project settings → API Keys → Secret keys, sb_secret_...)"),
-  SUPABASE_DATABASE_URL: z
-    .string()
-    .url(
-      "must be a valid Postgres connection string (Supabase project settings → Database → Connection string)"
-    ),
   AI_GATEWAY_API_KEY: z
     .string()
     .min(1, "must be set (Vercel dashboard → AI Gateway → API keys)"),

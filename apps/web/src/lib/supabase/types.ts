@@ -113,7 +113,74 @@ export type Database = {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      app_resolve_human_principal: {
+        Args: {
+          requested_team?: string | null;
+        };
+        Returns: {
+          id: string;
+          team_id: string;
+          role: TeamRole;
+          team_slug: string;
+          team_name: string;
+        }[];
+      };
+      app_team_admin_page: {
+        Args: {
+          requested_team?: string | null;
+        };
+        Returns: Json;
+      };
+      app_rename_team: {
+        Args: {
+          requested_team?: string | null;
+          new_name?: string | null;
+        };
+        Returns: Json;
+      };
+      app_update_team_member_role: {
+        Args: {
+          requested_team?: string | null;
+          target_user?: string | null;
+          next_role?: TeamRole | null;
+        };
+        Returns: Json;
+      };
+      app_remove_team_member: {
+        Args: {
+          requested_team?: string | null;
+          target_user?: string | null;
+        };
+        Returns: void;
+      };
+      app_create_team_invitation: {
+        Args: {
+          requested_team?: string | null;
+          invite_email?: string | null;
+          invite_role?: TeamRole | null;
+          invite_token_hash?: string | null;
+          invite_expires_at?: string | null;
+        };
+        Returns: Json;
+      };
+      app_cancel_team_invitation: {
+        Args: {
+          requested_team?: string | null;
+          invitation_id?: string | null;
+        };
+        Returns: void;
+      };
+      app_regenerate_team_invitation: {
+        Args: {
+          requested_team?: string | null;
+          invitation_id?: string | null;
+          invite_token_hash?: string | null;
+          invite_expires_at?: string | null;
+        };
+        Returns: Json;
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };
