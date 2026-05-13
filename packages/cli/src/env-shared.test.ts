@@ -100,10 +100,19 @@ describe("parsePublicEnv", () => {
     expect(env.NEXT_PUBLIC_APP_NAME).toBe("Second Brain");
   });
 
-  it("defaults the public app name when missing", () => {
+  it("defaults NEXT_PUBLIC_APP_NAME when omitted", () => {
     const { NEXT_PUBLIC_APP_NAME: _appName, ...withoutAppName } = validPublic;
 
     const env = parsePublicEnv(withoutAppName);
+
+    expect(env.NEXT_PUBLIC_APP_NAME).toBe("Second Brain");
+  });
+
+  it("defaults NEXT_PUBLIC_APP_NAME when blank", () => {
+    const env = parsePublicEnv({
+      ...validPublic,
+      NEXT_PUBLIC_APP_NAME: "",
+    });
 
     expect(env.NEXT_PUBLIC_APP_NAME).toBe("Second Brain");
   });

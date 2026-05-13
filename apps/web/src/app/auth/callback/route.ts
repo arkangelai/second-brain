@@ -1,23 +1,33 @@
-import { redirect } from "next/navigation";
-
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { safeRedirectPath } from "@/lib/url";
+import { type NextRequest, NextResponse } from "next/server";
 
-export async function GET(request: Request) {
+export const runtime = "nodejs";
+
+export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
-  const next = safeRedirectPath(requestUrl.searchParams.get("next"));
+  const nextPath = normalizeNextPath(requestUrl.searchParams.get("next"));
 
   if (code) {
     const supabase = await createServerSupabaseClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
-      redirect(next);
+      return NextResponse.redirect(new URL(nextPath, requestUrl.origin));
     }
-
-    console.error(error);
   }
 
-  redirect(`/login?next=${encodeURIComponent(next)}&error=callback`);
+  const loginUrl = new URL("/login", requestUrl.origin);
+  loginUrl.searchParams.set("next", nextPath);
+  loginUrl.searchParams.set("error", "auth_callback_failed");
+
+  return NextResponse.redirect(loginUrl);
+}
+
+function normalizeNextPath(value: string | null): string {
+  if (!value?.startsWith("/") || value.startsWith("//")) {
+    return "/admin/team";
+  }
+
+  return value;
 }

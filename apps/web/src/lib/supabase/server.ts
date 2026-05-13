@@ -1,11 +1,15 @@
-import { createServerClient } from "@supabase/ssr";
+import "server-only";
+
 import { publicEnv } from "@second-brain/shared/env";
+import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+
+import type { Database } from "./types";
 
 export async function createServerSupabaseClient() {
   const cookieStore = await cookies();
 
-  return createServerClient(
+  return createServerClient<Database>(
     publicEnv.NEXT_PUBLIC_SUPABASE_URL,
     publicEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
@@ -19,8 +23,8 @@ export async function createServerSupabaseClient() {
               cookieStore.set(name, value, options);
             });
           } catch {
-            // Server Components cannot set cookies. Route Handlers and Server
-            // Actions can, which are the code paths that need persistence.
+            // Server Components can read but not mutate cookies. Route Handlers
+            // and Server Actions still set refreshed Supabase cookies here.
           }
         },
       },
