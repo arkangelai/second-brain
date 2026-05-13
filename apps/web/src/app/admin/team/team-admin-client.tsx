@@ -150,9 +150,9 @@ export function TeamAdminClient({ data }: { data: AdminTeamPageData }) {
     const form = event.currentTarget;
     const formData = new FormData(form);
     const email = String(formData.get("email") ?? "").trim().toLowerCase();
-    const role = formData.get("role");
+    const role = teamRoleFromValue(formData.get("role"));
 
-    if (!email || typeof role !== "string") {
+    if (!email || !role) {
       toast.error("Enter an email and choose a role.");
       return;
     }
@@ -160,7 +160,7 @@ export function TeamAdminClient({ data }: { data: AdminTeamPageData }) {
     const optimisticInvite: PendingInvitation = {
       id: `pending-${Date.now()}`,
       email,
-      role: role as TeamRole,
+      role,
       invitedAt: new Date().toISOString(),
       expiresAt: addDays(new Date(), 7).toISOString(),
     };
@@ -493,7 +493,12 @@ function RoleSelect({
     <Select
       value={member.role}
       disabled={disabled}
-      onValueChange={(value) => onChange(member.userId, value as TeamRole)}
+      onValueChange={(value) => {
+        const role = teamRoleFromValue(value);
+        if (role) {
+          onChange(member.userId, role);
+        }
+      }}
     >
       <SelectTrigger aria-label={`Change role for ${member.name}`}>
         <SelectValue />
@@ -638,4 +643,8 @@ function initials(name: string) {
 
 function roleLabel(role: TeamRole) {
   return role.charAt(0).toUpperCase() + role.slice(1);
+}
+
+function teamRoleFromValue(value: unknown): TeamRole | null {
+  return TEAM_ROLES.find((role) => role === value) ?? null;
 }

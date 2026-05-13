@@ -58,6 +58,10 @@ type InvitationRow = {
   created_at: string;
 };
 
+type TeamIdRow = {
+  team_id: string;
+};
+
 type TeamContext = {
   supabase: SupabaseClient;
   userId: string;
@@ -76,9 +80,7 @@ export class AdminTeamError extends Error {
 }
 
 export function isTeamRole(value: unknown): value is TeamRole {
-  return (
-    typeof value === "string" && TEAM_ROLES.includes(value as TeamRole)
-  );
+  return TEAM_ROLES.some((role) => role === value);
 }
 
 export function validateTeamName(value: unknown): string {
@@ -245,12 +247,9 @@ export async function createInvitation(
       throw new AdminTeamError(error.message, 500);
     }
 
-    const link = invitationLink(token);
-    console.info(`Invitation link for ${email}: ${link}`);
-
     return {
       invitation: mapInvitation(data),
-      link,
+      link: invitationLink(token),
     };
   });
 }
@@ -298,12 +297,9 @@ export async function regenerateInvitationLink(
       throw new AdminTeamError(error.message, 500);
     }
 
-    const link = invitationLink(token);
-    console.info(`Regenerated invitation link for ${data.email}: ${link}`);
-
     return {
       invitation: mapInvitation(data),
-      link,
+      link: invitationLink(token),
     };
   });
 }
@@ -421,7 +417,7 @@ function accessTokenFromSupabaseCookieValue(value: string): string | null {
         return parsed.access_token;
       }
     } catch {
-      // Try the next supported Supabase cookie encoding.
+      continue;
     }
   }
 
@@ -455,18 +451,22 @@ async function resolveActiveTeamId(
     .select("team_id")
     .eq("user_id", userId)
     .eq("member_type", "human")
-    .order("joined_at", { ascending: true });
+    .order("joined_at", { ascending: true })
+    .returns<TeamIdRow[]>();
 
   if (error) {
     throw new AdminTeamError(error.message, 500);
   }
 
-  const teamIds = (memberships ?? []).map((membership) => membership.team_id as string);
-  if (teamIds.length === 0) {
+  const [firstTeamId, ...teamIds] = (memberships ?? []).map(
+    (membership) => membership.team_id
+  );
+  if (!firstTeamId) {
     throw new AdminTeamError("You do not belong to a team yet.", 403);
   }
+  const availableTeamIds = [firstTeamId, ...teamIds];
 
-  if (cookieTeamId && teamIds.includes(cookieTeamId)) {
+  if (cookieTeamId && availableTeamIds.includes(cookieTeamId)) {
     return cookieTeamId;
   }
 
@@ -476,11 +476,14 @@ async function resolveActiveTeamId(
     .eq("user_id", userId)
     .maybeSingle<Pick<UserProfileRow, "default_team_id">>();
 
-  if (profile?.default_team_id && teamIds.includes(profile.default_team_id)) {
+  if (
+    profile?.default_team_id &&
+    availableTeamIds.includes(profile.default_team_id)
+  ) {
     return profile.default_team_id;
   }
 
-  return teamIds[0]!;
+  return firstTeamId;
 }
 
 async function fetchCurrentMembership(
@@ -544,9 +547,10 @@ async function hydrateMembers(
   rows: TeamMemberRow[],
   currentUserId: string
 ): Promise<TeamMember[]> {
-  const userIds = rows
-    .map((row) => row.user_id)
-    .filter((userId): userId is string => Boolean(userId));
+  const memberRows = rows.filter(
+    (row): row is TeamMemberRow & { user_id: string } => Boolean(row.user_id)
+  );
+  const userIds = memberRows.map((row) => row.user_id);
 
   if (userIds.length === 0) {
     return [];
@@ -570,10 +574,9 @@ async function hydrateMembers(
   );
   const emailByUserId = new Map(emails);
 
-  return rows
-    .filter((row) => row.user_id)
+  return memberRows
     .map((row) => {
-      const userId = row.user_id!;
+      const userId = row.user_id;
       const profile = profileByUserId.get(userId);
       const email = emailByUserId.get(userId) ?? "Unknown email";
 
