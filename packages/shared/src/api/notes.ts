@@ -78,12 +78,14 @@ export type NoteWithLinksResponse = z.infer<typeof NoteWithLinksResponseSchema>;
 export const NoteRevisionsResponseSchema = z.object({
   revisions: z.array(NoteRevisionSchema),
   next_before: z.string().datetime().nullable(),
+  next_before_id: z.string().uuid().nullable(),
 });
 export type NoteRevisionsResponse = z.infer<typeof NoteRevisionsResponseSchema>;
 
 export const ListNotesResponseSchema = z.object({
   notes: z.array(NoteRecordSchema),
   next_updated_before: z.string().datetime().nullable(),
+  next_updated_before_id: z.string().uuid().nullable(),
 });
 export type ListNotesResponse = z.infer<typeof ListNotesResponseSchema>;
 

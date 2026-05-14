@@ -25,10 +25,22 @@ export async function GET(
       { status: 400 },
     );
   }
+  const beforeId = url.searchParams.get("before_id");
+  if (beforeId !== null && before === null) {
+    return NextResponse.json({ error: "'before_id' requires 'before'" }, { status: 400 });
+  }
+  if (beforeId !== null && !isUuid(beforeId)) {
+    return NextResponse.json(
+      { error: "Invalid 'before_id' parameter; expected a UUID" },
+      { status: 400 },
+    );
+  }
+
   const full = url.searchParams.get("full") === "true";
   const { slug } = await context.params;
   const result = await listRevisions(principal, slug, {
     before,
+    beforeId,
     full,
     limit: Number.isFinite(limit) ? limit : 50,
   });
@@ -40,4 +52,10 @@ export async function GET(
   }
 
   return NextResponse.json(result.value);
+}
+
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value,
+  );
 }

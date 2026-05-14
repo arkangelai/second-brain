@@ -70,6 +70,24 @@ function noteRow(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function revisionRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "00000000-0000-0000-0000-000000000020",
+    team_id: teamId,
+    note_id: "00000000-0000-0000-0000-000000000010",
+    version: 1,
+    op_type: "edit",
+    author_id: principalId,
+    author_type: "human",
+    before_body: null,
+    after_body: null,
+    summary: null,
+    diff_preview: null,
+    created_at: timestamp,
+    ...overrides,
+  };
+}
+
 describe("notes service read policy", () => {
   beforeEach(() => {
     queryHandler = async () => ({ rows: [] });
@@ -158,6 +176,73 @@ describe("notes service read policy", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.value.notes.map((note) => note.slug)).toEqual(["visible"]);
+    }
+  });
+
+  it("uses the id tie-breaker for listNotes keyset pagination", async () => {
+    const beforeId = "00000000-0000-0000-0000-000000000099";
+    const nextId = "00000000-0000-0000-0000-000000000011";
+    queryHandler = async (sql, values) => {
+      if (sql.includes("from public.notes")) {
+        expect(sql).toContain("updated_at = $4::timestamptz");
+        expect(sql).toContain("id < $5::uuid");
+        expect(values[3]).toBe(timestamp);
+        expect(values[4]).toBe(beforeId);
+        return {
+          rows: [
+            noteRow({ id: "00000000-0000-0000-0000-000000000012", slug: "newer" }),
+            noteRow({ id: nextId, slug: "cursor" }),
+          ],
+        };
+      }
+
+      throw new Error(`Unexpected query: ${sql}`);
+    };
+
+    const result = await listNotes(humanPrincipal, {
+      includeArchived: false,
+      updatedBefore: timestamp,
+      updatedBeforeId: beforeId,
+      limit: 2,
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.next_updated_before).toBe(timestamp);
+      expect(result.value.next_updated_before_id).toBe(nextId);
+    }
+  });
+
+  it("uses the id tie-breaker for listRevisions keyset pagination", async () => {
+    const beforeId = "00000000-0000-0000-0000-000000000099";
+    const nextId = "00000000-0000-0000-0000-000000000020";
+    queryHandler = async (sql, values) => {
+      if (sql.includes("from public.notes")) {
+        return { rows: [noteRow({ folder: "01_thinking/notes" })] };
+      }
+
+      if (sql.includes("from public.note_revisions")) {
+        expect(sql).toContain("created_at = $2::timestamptz");
+        expect(sql).toContain("id < $3::uuid");
+        expect(values[1]).toBe(timestamp);
+        expect(values[2]).toBe(beforeId);
+        return { rows: [revisionRow({ id: nextId })] };
+      }
+
+      throw new Error(`Unexpected query: ${sql}`);
+    };
+
+    const result = await listRevisions(humanPrincipal, "race", {
+      before: timestamp,
+      beforeId,
+      full: false,
+      limit: 1,
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.next_before).toBe(timestamp);
+      expect(result.value.next_before_id).toBe(nextId);
     }
   });
 });

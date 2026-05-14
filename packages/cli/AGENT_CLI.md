@@ -97,9 +97,13 @@ Response shape:
       "version": 3
     }
   ],
-  "next_updated_before": null
+  "next_updated_before": null,
+  "next_updated_before_id": null
 }
 ```
+
+For the next page, pass both returned cursor parts:
+`updated_before=$next_updated_before&updated_before_id=$next_updated_before_id`.
 
 ### Read one note
 
@@ -181,6 +185,8 @@ curl -sS -H "$AUTH" "$API/api/notes/pricing-notes/revisions?limit=20"
 
 Full revision bodies require an owner or admin human session and are not
 available to normal agent keys.
+For the next revisions page, pass both `before` and `before_id` from the
+`next_before` and `next_before_id` response fields.
 
 ### Archive and restore
 

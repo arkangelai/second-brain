@@ -49,11 +49,13 @@ export type NoteLinkResult = {
 export type RevisionList = {
   revisions: NoteRevision[];
   next_before: string | null;
+  next_before_id: string | null;
 };
 
 export type NotesList = {
   notes: NoteRecord[];
   next_updated_before: string | null;
+  next_updated_before_id: string | null;
 };
 
 export async function listNotes(
@@ -63,12 +65,14 @@ export async function listNotes(
     folder,
     q,
     updatedBefore,
+    updatedBeforeId,
     limit,
   }: {
     includeArchived: boolean;
     folder?: string | null;
     q?: string | null;
     updatedBefore?: string | null;
+    updatedBeforeId?: string | null;
     limit: number;
   },
 ): Promise<NotesResult<NotesList>> {
@@ -80,20 +84,29 @@ export async function listNotes(
         where team_id = $1
           and ($2::boolean or archived_at is null)
           and ($3::text is null or folder = $3)
-          and ($4::text is null or updated_at < $4::timestamptz)
           and (
-            $5::text is null
-            or slug::text ilike '%' || $5 || '%'
-            or title ilike '%' || $5 || '%'
-            or body ilike '%' || $5 || '%'
+            $4::timestamptz is null
+            or updated_at < $4::timestamptz
+            or (
+              $5::uuid is not null
+              and updated_at = $4::timestamptz
+              and id < $5::uuid
+            )
+          )
+          and (
+            $6::text is null
+            or slug::text ilike '%' || $6 || '%'
+            or title ilike '%' || $6 || '%'
+            or body ilike '%' || $6 || '%'
           )
         order by updated_at desc, id desc
-        limit $6`,
+        limit $7`,
       [
         principal.team_id,
         includeArchived,
         folder?.trim() || null,
         updatedBefore ?? null,
+        updatedBeforeId ?? null,
         q?.trim() || null,
         boundedLimit,
       ],
@@ -103,12 +116,13 @@ export async function listNotes(
       (note) => canRead(principal, "search", noteTarget(note)).allowed,
     );
 
+    const nextRow =
+      result.rows.length === boundedLimit ? result.rows[result.rows.length - 1] : null;
+
     return ok({
       notes: visibleRows.map(toNoteRecord),
-      next_updated_before:
-        result.rows.length === boundedLimit
-          ? toNoteRecord(result.rows[result.rows.length - 1]).updated_at
-          : null,
+      next_updated_before: nextRow ? toNoteRecord(nextRow).updated_at : null,
+      next_updated_before_id: nextRow ? toNoteRecord(nextRow).id : null,
     });
   });
 }
@@ -146,10 +160,12 @@ export async function listRevisions(
   slug: string,
   {
     before,
+    beforeId,
     full,
     limit,
   }: {
     before?: string | null;
+    beforeId?: string | null;
     full: boolean;
     limit: number;
   },
@@ -166,15 +182,20 @@ export async function listRevisions(
 
     const revisions = await loadRevisions(client, note.id, {
       before,
+      beforeId,
       full,
       limit: Math.min(Math.max(limit, 1), 100),
     });
-    const nextBefore =
+    const nextRevision =
       revisions.length === Math.min(Math.max(limit, 1), 100)
-        ? revisions[revisions.length - 1]?.created_at ?? null
+        ? (revisions[revisions.length - 1] ?? null)
         : null;
 
-    return ok({ revisions, next_before: nextBefore });
+    return ok({
+      revisions,
+      next_before: nextRevision?.created_at ?? null,
+      next_before_id: nextRevision?.id ?? null,
+    });
   });
 }
 
@@ -558,10 +579,12 @@ async function loadRevisions(
   noteId: string,
   {
     before,
+    beforeId,
     full,
     limit,
   }: {
     before?: string | null;
+    beforeId?: string | null;
     full: boolean;
     limit: number;
   },
@@ -582,10 +605,18 @@ async function loadRevisions(
         created_at
        from public.note_revisions
       where note_id = $1
-        and ($2::timestamptz is null or created_at < $2::timestamptz)
+        and (
+          $2::timestamptz is null
+          or created_at < $2::timestamptz
+          or (
+            $3::uuid is not null
+            and created_at = $2::timestamptz
+            and id < $3::uuid
+          )
+        )
       order by created_at desc, id desc
-      limit $3`,
-    [noteId, before ?? null, limit],
+      limit $4`,
+    [noteId, before ?? null, beforeId ?? null, limit],
   );
 
   return result.rows.map(toRevisionRecord);
