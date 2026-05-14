@@ -193,13 +193,22 @@ export async function authenticateAgentRequest(
   }
 
   const now = new Date().toISOString();
-  await touchAgentActivity({
-    supabase,
-    teamId: team.id,
-    memberId: typedKey.member_id,
-    keyId: typedKey.id,
-    now,
-  });
+  try {
+    await touchAgentActivity({
+      supabase,
+      teamId: team.id,
+      memberId: typedKey.member_id,
+      keyId: typedKey.id,
+      now,
+    });
+  } catch (error) {
+    console.error("Unable to update agent activity after successful auth", {
+      teamId: team.id,
+      memberId: typedKey.member_id,
+      keyId: typedKey.id,
+      error,
+    });
+  }
 
   return {
     supabase,

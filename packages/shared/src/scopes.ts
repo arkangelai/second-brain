@@ -144,6 +144,10 @@ export function matchScope(
   }
 
   const normalized = normalizePath(path);
+  if (!normalized) {
+    return { allowed: false, reason: "path_not_allowed" };
+  }
+
   const bucket = opPathBucket[op];
   const primary = scopes[bucket];
 
@@ -164,5 +168,19 @@ function matchesAny(globs: string[], path: string): boolean {
 }
 
 function normalizePath(path: string): string {
-  return path.replace(/^\.?\/+/, "").replace(/\\/g, "/");
+  const normalized: string[] = [];
+
+  for (const segment of path.replace(/\\/g, "/").split("/")) {
+    if (!segment || segment === ".") continue;
+
+    if (segment === "..") {
+      if (normalized.length === 0) return "";
+      normalized.pop();
+      continue;
+    }
+
+    normalized.push(segment);
+  }
+
+  return normalized.join("/");
 }

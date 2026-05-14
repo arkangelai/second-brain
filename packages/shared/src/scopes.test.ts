@@ -59,6 +59,27 @@ describe("matchScope", () => {
     });
   });
 
+  it("canonicalizes paths before matching globs", () => {
+    expect(matchScope(writer, "01_thinking/notes/../notes/x.md", "create")).toEqual({
+      allowed: true,
+    });
+    expect(matchScope(writer, "01_thinking/notes/../../04_archive/x.md", "create")).toEqual({
+      allowed: false,
+      reason: "path_not_allowed",
+    });
+  });
+
+  it("rejects paths that traverse above the scoped root", () => {
+    expect(matchScope(reader, "../outside.md", "get")).toEqual({
+      allowed: false,
+      reason: "path_not_allowed",
+    });
+    expect(matchScope(reader, "01_thinking/../../outside.md", "get")).toEqual({
+      allowed: false,
+      reason: "path_not_allowed",
+    });
+  });
+
   it("denies op when ops list is empty", () => {
     const noOps = { ...reader, ops: [] };
     expect(matchScope(noOps, "anywhere.md", "get")).toEqual({
