@@ -25,6 +25,11 @@ type DbRevisionRow = NoteRevision & {
   team_id: string;
 };
 
+type DbNoteLinkRow = NoteLinkResult & {
+  source_folder: string;
+  source_frontmatter: NoteRecord["frontmatter"];
+};
+
 export type NotesError = {
   status: number;
   body: Record<string, unknown>;
@@ -139,7 +144,7 @@ export async function getNote(
     if (!policy.allowed) return policyErr(policy);
     if (note.archived_at && !includeArchived) return err(410, "Note archived");
 
-    const linksIn = await loadLinksIn(client, principal.team_id, note.slug);
+    const linksIn = await loadLinksIn(client, principal, note.slug);
     const linksOut = await loadLinksOut(client, principal.team_id, note.id);
     const revisions = await loadRevisions(client, note.id, { limit: 3, full: false });
 
@@ -647,12 +652,14 @@ async function loadLinksOut(
 
 async function loadLinksIn(
   client: PoolClient,
-  teamId: string,
+  principal: NotesPrincipal,
   slug: string,
 ): Promise<NoteLinkResult[]> {
-  const result = await client.query<NoteLinkResult>(
+  const result = await client.query<DbNoteLinkRow>(
     `select
         source.slug::text as source_slug,
+        source.folder as source_folder,
+        source.frontmatter as source_frontmatter,
         links.target_slug::text as target_slug,
         target.id is not null as exists
        from public.note_links links
@@ -663,9 +670,17 @@ async function loadLinksIn(
       where links.team_id = $1
         and links.target_slug = $2
       order by source.slug::text`,
-    [teamId, normalizeSlug(slug)],
+    [principal.team_id, normalizeSlug(slug)],
   );
-  return result.rows;
+  return result.rows
+    .filter((link) =>
+      canRead(principal, "get", {
+        folder: link.source_folder,
+        slug: link.source_slug,
+        frontmatter: link.source_frontmatter,
+      }).allowed,
+    )
+    .map(toNoteLinkResult);
 }
 
 async function setNoteAudit(
@@ -726,6 +741,14 @@ function noteTarget(note: Pick<DbNoteRow, "folder" | "slug" | "frontmatter">) {
     folder: note.folder,
     slug: String(note.slug),
     frontmatter: note.frontmatter,
+  };
+}
+
+function toNoteLinkResult(link: NoteLinkResult): NoteLinkResult {
+  return {
+    source_slug: link.source_slug,
+    target_slug: link.target_slug,
+    exists: link.exists,
   };
 }
 

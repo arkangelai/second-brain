@@ -179,6 +179,75 @@ describe("notes service read policy", () => {
     }
   });
 
+  it("filters inbound links whose source notes are outside agent read_paths", async () => {
+    queryHandler = async (sql) => {
+      if (sql.includes("from public.notes")) {
+        return {
+          rows: [
+            noteRow({
+              slug: "target",
+              folder: "01_thinking/notes",
+              title: "Target",
+            }),
+          ],
+        };
+      }
+
+      if (sql.includes("from public.note_links") && sql.includes("links.target_slug = $2")) {
+        expect(sql).toContain("source.folder as source_folder");
+        expect(sql).toContain("source.frontmatter as source_frontmatter");
+        return {
+          rows: [
+            {
+              source_slug: "hidden-source",
+              source_folder: "06_system/private",
+              source_frontmatter: { created_by: principalId, created_at: timestamp },
+              target_slug: "target",
+              exists: true,
+            },
+            {
+              source_slug: "visible-source",
+              source_folder: "01_thinking/notes",
+              source_frontmatter: { created_by: principalId, created_at: timestamp },
+              target_slug: "target",
+              exists: true,
+            },
+          ],
+        };
+      }
+
+      if (sql.includes("from public.note_links") && sql.includes("links.source_id = $2")) {
+        return { rows: [] };
+      }
+
+      if (sql.includes("from public.note_revisions")) {
+        return { rows: [] };
+      }
+
+      throw new Error(`Unexpected query: ${sql}`);
+    };
+
+    const result = await getNote(
+      agentPrincipal({
+        ...scopeTemplates.reader,
+        read_paths: ["01_thinking/notes/**"],
+      }),
+      "target",
+      false,
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.links_in).toEqual([
+        {
+          source_slug: "visible-source",
+          target_slug: "target",
+          exists: true,
+        },
+      ]);
+    }
+  });
+
   it("uses the id tie-breaker for listNotes keyset pagination", async () => {
     const beforeId = "00000000-0000-0000-0000-000000000099";
     const nextId = "00000000-0000-0000-0000-000000000011";
