@@ -24,14 +24,23 @@ supabase start
 ```
 
 This boots Postgres, Auth, Studio, etc. on local ports and prints the
-generated API URL, anon key, and service-role key. Copy the relevant values
-into `apps/web/.env.local`:
+generated API URL, anon key, and service-role key. If you use the local
+Supabase stack, copy the relevant values into the repo root `.env.local`;
+the root `dev` and `dev:web` scripts load that file with
+`bun --env-file=.env.local`:
 
 ```env
+APP_URL=http://localhost:3000
 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key from `supabase start`>
 SUPABASE_SECRET_KEY=<service-role key from `supabase start`>
 ```
+
+If you use the hosted Supabase project for local web development, keep
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and
+`SUPABASE_SECRET_KEY` pointed at the hosted project. Invite links derive the
+current `localhost` origin from the incoming request, while non-local requests
+fall back to `APP_URL`.
 
 ### Reset the database
 

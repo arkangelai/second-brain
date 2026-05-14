@@ -243,6 +243,10 @@ otp_expiry = 3600
 subject = "Your Second Brain sign-in code"
 content_path = "./supabase/templates/sign-in-code.html"
 
+[auth.email.template.confirmation]
+subject = "Your Second Brain sign-in code"
+content_path = "./supabase/templates/sign-in-code.html"
+
 # [auth.email.template.invite]
 # subject = "You have been invited"
 # content_path = "./supabase/templates/invite.html"

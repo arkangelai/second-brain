@@ -1,11 +1,9 @@
-import { LogOut, Mail } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
-import {
-  sendInviteMagicLink,
-  signOutForInvite,
-} from "@/app/invite/[token]/actions";
+import { signOutForInvite } from "@/app/invite/[token]/actions";
+import { LoginForm } from "@/app/login/login-form";
 import { Button } from "@/components/ui/button";
 import { HttpError } from "@/lib/http/errors";
 import { acceptInvitationToken } from "@/lib/invitations/accept";
@@ -15,7 +13,6 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 interface InvitePageProps {
   params: Promise<{ token: string }>;
   searchParams: Promise<{
-    sent?: string;
     error?: string;
     signed_out?: string;
   }>;
@@ -82,33 +79,12 @@ export default async function InvitePage({
       title={`Join ${preview.teamName}`}
       subtitle={`${preview.inviterName} invited you as ${preview.role}.`}
     >
-      <form
-        action={sendInviteMagicLink}
-        className="space-y-4 rounded-lg border border-border bg-card p-5"
-      >
-        <input type="hidden" name="token" value={token} />
-        <label className="block space-y-2 text-sm">
-          <span className="font-medium">Email</span>
-          <input
-            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none transition focus-visible:ring-1 focus-visible:ring-ring"
-            name="email"
-            type="email"
-            autoComplete="email"
-            defaultValue={preview.email}
-            required
-          />
-        </label>
-        <Button className="w-full" type="submit">
-          <Mail aria-hidden="true" />
-          Continue
-        </Button>
-      </form>
-
-      {query.sent === "1" ? (
-        <p className="rounded-md border border-border bg-secondary px-4 py-3 text-sm text-secondary-foreground">
-          Check your email to finish joining.
-        </p>
-      ) : null}
+      <div className="rounded-lg border border-border bg-card p-5">
+        <LoginForm
+          nextPath={`/invite/${encodeURIComponent(token)}`}
+          initialEmail={preview.email}
+        />
+      </div>
 
       {query.signed_out === "1" ? (
         <p className="rounded-md border border-border bg-secondary px-4 py-3 text-sm text-secondary-foreground">
@@ -118,7 +94,7 @@ export default async function InvitePage({
 
       {query.error ? (
         <p className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive-foreground">
-          Unable to send that link. Try again.
+          Unable to continue. Try again.
         </p>
       ) : null}
     </InviteShell>

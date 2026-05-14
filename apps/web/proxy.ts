@@ -11,7 +11,7 @@ import {
 } from "@/lib/auth/active-team";
 import type { Database } from "@/lib/supabase/types";
 
-const PUBLIC_AUTH_PATHS = ["/login", "/auth/callback"];
+const PUBLIC_AUTH_PATHS = ["/login"];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });

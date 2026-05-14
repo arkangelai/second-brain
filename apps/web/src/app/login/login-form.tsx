@@ -10,11 +10,12 @@ import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 type LoginFormProps = {
   nextPath: string;
+  initialEmail?: string;
 };
 
-export function LoginForm({ nextPath }: LoginFormProps) {
+export function LoginForm({ nextPath, initialEmail = "" }: LoginFormProps) {
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(initialEmail);
   const [code, setCode] = useState("");
   const [step, setStep] = useState<"email" | "code">("email");
   const [status, setStatus] = useState<
@@ -70,9 +71,17 @@ export function LoginForm({ nextPath }: LoginFormProps) {
       });
 
       if (legacyResult.error) {
-        setStatus("error");
-        setMessage(legacyResult.error.message);
-        return;
+        const signupResult = await supabase.auth.verifyOtp({
+          email: emailAddress,
+          token,
+          type: "signup",
+        });
+
+        if (signupResult.error) {
+          setStatus("error");
+          setMessage(signupResult.error.message);
+          return;
+        }
       }
     }
 
