@@ -319,11 +319,17 @@ export async function linkNote(
           set body = $1
         where id = $2
           and team_id = $3
+          and version = $4
         returning *`,
-      [inserted.body, note.id, principal.team_id],
+      [inserted.body, note.id, principal.team_id, note.version],
     );
 
     const updated = result.rows[0];
+    if (!updated) {
+      const fresh = await findNote(client, principal.team_id, slug);
+      return conflict(fresh ?? note);
+    }
+
     return ok({ note: toNoteRecord(updated), changed: true }, etagHeaders(updated));
   });
 }

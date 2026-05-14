@@ -120,6 +120,28 @@ as $$
   )
 $$;
 
+create or replace function public.notes_body_without_fenced_code(body text)
+returns text
+language plpgsql
+immutable
+as $$
+declare
+  line text;
+  in_fence boolean := false;
+  stripped text := '';
+begin
+  foreach line in array regexp_split_to_array(coalesce(body, ''), E'\n') loop
+    if line ~ '^[[:space:]]*```' then
+      in_fence := not in_fence;
+    elsif not in_fence then
+      stripped := stripped || line || E'\n';
+    end if;
+  end loop;
+
+  return stripped;
+end;
+$$;
+
 create or replace function public.refresh_note_links()
 returns trigger
 language plpgsql
@@ -130,7 +152,11 @@ begin
 
   insert into public.note_links (team_id, source_id, target_slug)
   select distinct new.team_id, new.id, link_match[1]::citext
-  from regexp_matches(new.body, '\[\[([^\]|#]+)(?:[|#][^\]]*)?\]\]', 'g') as m(link_match)
+  from regexp_matches(
+    public.notes_body_without_fenced_code(new.body),
+    '\[\[([^\]|#]+)(?:[|#][^\]]*)?\]\]',
+    'g'
+  ) as m(link_match)
   where btrim(link_match[1]) <> ''
   on conflict do nothing;
 
