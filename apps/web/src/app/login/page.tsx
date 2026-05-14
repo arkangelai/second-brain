@@ -16,7 +16,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         <div className="space-y-2">
           <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
           <p className="text-sm text-muted-foreground">
-            Use your email to continue to Second Brain.
+            Use the code sent to your email to continue to Second Brain.
           </p>
         </div>
         <LoginForm nextPath={nextPath} />
