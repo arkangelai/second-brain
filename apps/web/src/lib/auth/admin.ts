@@ -1,7 +1,9 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 
+import { ACTIVE_TEAM_COOKIE } from "@/lib/auth/active-team";
 import { bearerToken } from "./request";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export type Team = {
   id: string;
@@ -26,14 +28,16 @@ export async function resolveAdminContext(
   selector: TeamSelector = {},
 ): Promise<AdminContext | { error: string; status: number }> {
   const token = bearerToken(request);
-  if (!token) return { error: "Missing bearer token", status: 401 };
-
   const supabase = createSupabaseAdminClient({ routeHandler: true });
-  const { data: userData, error: userError } = await supabase.auth.getUser(token);
-  const user = userData.user;
+  const { user, error: userError } = token
+    ? await resolveBearerUser(supabase, token)
+    : await resolveSessionUser();
 
   if (userError || !user) {
-    return { error: "Invalid bearer token", status: 401 };
+    return {
+      error: token ? "Invalid bearer token" : "Authentication required",
+      status: 401,
+    };
   }
 
   const team = await resolveTeam(supabase, user.id, request, selector);
@@ -64,6 +68,23 @@ export async function resolveAdminContext(
   };
 }
 
+async function resolveBearerUser(
+  supabase: SupabaseClient,
+  token: string,
+): Promise<{ user: User | null; error: unknown }> {
+  const { data: userData, error } = await supabase.auth.getUser(token);
+  const user = userData.user;
+
+  return { user, error };
+}
+
+async function resolveSessionUser(): Promise<{ user: User | null; error: unknown }> {
+  const sessionSupabase = await createServerSupabaseClient();
+  const { data, error } = await sessionSupabase.auth.getUser();
+
+  return { user: data.user, error };
+}
+
 async function resolveTeam(
   supabase: SupabaseClient,
   userId: string,
@@ -79,6 +100,7 @@ async function resolveTeam(
     stringValue(selector.team_slug) ||
     url.searchParams.get("team_slug") ||
     request.headers.get("x-team-slug");
+  const activeTeamId = requestCookie(request, ACTIVE_TEAM_COOKIE);
 
   if (requestedTeamId) {
     return await findTeam(supabase, "id", requestedTeamId);
@@ -86,6 +108,16 @@ async function resolveTeam(
 
   if (requestedTeamSlug) {
     return await findTeam(supabase, "slug", requestedTeamSlug);
+  }
+
+  if (activeTeamId) {
+    const activeTeam = await findTeam(supabase, "id", activeTeamId);
+    if (
+      activeTeam &&
+      (await hasAdminMembership(supabase, userId, activeTeam.id))
+    ) {
+      return activeTeam;
+    }
   }
 
   const { data: profile } = await supabase
@@ -158,4 +190,25 @@ async function findTeam(
 
 function stringValue(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function requestCookie(request: Request, name: string): string | null {
+  const cookieHeader = request.headers.get("cookie");
+  if (!cookieHeader) return null;
+
+  for (const pair of cookieHeader.split(";")) {
+    const [rawKey, ...rawValue] = pair.trim().split("=");
+    if (rawKey !== name) continue;
+
+    const value = rawValue.join("=");
+    if (!value) return null;
+
+    try {
+      return decodeURIComponent(value);
+    } catch {
+      return value;
+    }
+  }
+
+  return null;
 }

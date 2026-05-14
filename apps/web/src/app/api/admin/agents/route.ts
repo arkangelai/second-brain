@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { AgentScopesSchema } from "@second-brain/shared";
 
 import { jsonError } from "@/lib/api/responses";
 import { logAgentEvent } from "@/lib/auth/agentAuth";
@@ -9,9 +10,21 @@ export const runtime = "nodejs";
 
 type CreateAgentBody = {
   name?: unknown;
+  description?: unknown;
   scopes?: unknown;
   team_id?: unknown;
   team_slug?: unknown;
+};
+
+type AgentRow = {
+  member_id: string;
+  display_name: string | null;
+  scopes: unknown;
+  active: boolean;
+  revoked_at: string | null;
+  last_seen_at: string | null;
+  joined_at: string;
+  created_by_user_id: string | null;
 };
 
 export async function GET(request: Request): Promise<NextResponse> {
@@ -30,17 +43,9 @@ export async function GET(request: Request): Promise<NextResponse> {
   if (error) return jsonError("Unable to list agents", 500);
 
   return NextResponse.json({
-    agents: (data ?? []).map((agent) => ({
-      id: agent.member_id,
-      team_id: context.team.id,
-      name: agent.display_name,
-      scopes: agent.scopes,
-      active: agent.active,
-      revoked_at: agent.revoked_at,
-      last_seen_at: agent.last_seen_at,
-      created_at: agent.joined_at,
-      created_by_user_id: agent.created_by_user_id,
-    })),
+    agents: ((data ?? []) as AgentRow[]).map(toAgentSummary),
+    role: context.role,
+    canManage: true,
   });
 }
 
@@ -59,8 +64,11 @@ export async function POST(request: Request): Promise<NextResponse> {
   const name = typeof body.name === "string" ? body.name.trim() : "";
   if (!name) return jsonError("Agent name is required", 400);
 
-  const scopes = validScopes(body.scopes) ? body.scopes : null;
-  if (!scopes) return jsonError("Scopes must be a JSON object or array", 400);
+  const scopesResult = AgentScopesSchema.safeParse(body.scopes);
+  if (!scopesResult.success) {
+    return jsonError("Scopes must match the agent scopes schema", 400);
+  }
+  const scopes = scopesResult.data;
 
   const memberId = crypto.randomUUID();
   const key = generateKey(context.team.slug);
@@ -125,24 +133,22 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   return NextResponse.json(
     {
-      agent: {
-        id: agent.member_id,
-        team_id: context.team.id,
-        name: agent.display_name,
-        scopes: agent.scopes,
-        active: agent.active,
-        revoked_at: agent.revoked_at,
-        last_seen_at: agent.last_seen_at,
-        created_at: agent.joined_at,
-        created_by_user_id: agent.created_by_user_id,
-      },
+      agent: toAgentSummary(agent as AgentRow),
       plaintext_key: key.plaintext,
     },
     { status: 201 },
   );
 }
 
-function validScopes(scopes: unknown): scopes is Record<string, unknown> | unknown[] {
-  if (Array.isArray(scopes)) return true;
-  return Boolean(scopes) && typeof scopes === "object";
+function toAgentSummary(agent: AgentRow) {
+  return {
+    id: agent.member_id,
+    name: agent.display_name ?? "Unnamed agent",
+    description: "",
+    status: agent.active && !agent.revoked_at ? "active" : "revoked",
+    scopes: agent.scopes,
+    lastSeen: agent.last_seen_at,
+    createdBy: agent.created_by_user_id,
+    createdAt: agent.joined_at,
+  };
 }

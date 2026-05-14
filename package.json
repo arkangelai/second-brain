@@ -12,9 +12,9 @@
     "bun": ">=1.0.0"
   },
   "scripts": {
-    "dev": "bun run --filter='./apps/*' --filter='./packages/cli' --parallel dev",
-    "dev:web": "bun run --filter='./apps/web' dev",
-    "dev:cli": "bun run --filter='./packages/cli' dev",
+    "dev": "bun --env-file=.env.local run --filter='./apps/*' --filter='./packages/cli' --parallel dev",
+    "dev:web": "bun --env-file=.env.local run --filter='./apps/web' dev",
+    "dev:cli": "bun --env-file=.env.local run --filter='./packages/cli' dev",
     "build": "bun run --filter='./apps/*' build",
     "test": "bun run --filter='./apps/*' --filter='./packages/*' test",
     "typecheck": "bun run --filter='*' typecheck",

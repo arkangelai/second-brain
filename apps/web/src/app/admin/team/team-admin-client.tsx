@@ -227,36 +227,68 @@ export function TeamAdminClient({
   }
 
   return (
-    <main className="min-h-dvh bg-background">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
-        <header className="flex flex-col gap-4 border-b border-border pb-6 md:flex-row md:items-end md:justify-between">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-3xl font-semibold tracking-tight">
+    <main className="relative">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-10 px-4 py-10 sm:px-6 lg:px-8">
+        <header className="motion-safe:animate-[reveal-up_700ms_cubic-bezier(0.22,1,0.36,1)_both] flex flex-col gap-6 border-b border-stone-800/70 pb-8 md:flex-row md:items-end md:justify-between">
+          <div className="space-y-4">
+            <span className="inline-flex items-center gap-2 font-[family-name:var(--font-plex-mono)] text-[11px] uppercase tracking-[0.3em] text-teal-200/80">
+              <span className="size-1.5 rounded-full bg-teal-300/80" />
+              Vault administration / 01
+            </span>
+            <div className="flex flex-wrap items-end gap-4">
+              <h1
+                className="font-[family-name:var(--font-fraunces)] text-[clamp(2.25rem,4vw,3.5rem)] font-light leading-[1.02] text-stone-100"
+                style={{ fontVariationSettings: "'opsz' 96, 'SOFT' 30" }}
+              >
                 {teamName}
               </h1>
-              <Badge variant="secondary">{roleLabel(data.currentUser.role)}</Badge>
+              <Badge
+                variant="outline"
+                className="border-teal-300/30 bg-teal-300/10 font-[family-name:var(--font-plex-mono)] text-[10px] uppercase tracking-[0.22em] text-teal-100"
+              >
+                {roleLabel(data.currentUser.role)}
+              </Badge>
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p className="max-w-xl text-sm leading-relaxed text-stone-400">
               Manage team settings, human members, and active invitations.
+              Changes propagate to every device using this archive.
             </p>
           </div>
-          <div className="rounded-md border border-border px-3 py-2 text-sm text-muted-foreground">
-            <span className="font-mono text-foreground">{data.team.slug}</span>
+          <div className="flex flex-col gap-2 self-end rounded-md border border-stone-800/80 bg-stone-950/60 px-4 py-3 text-right">
+            <span className="font-[family-name:var(--font-plex-mono)] text-[10px] uppercase tracking-[0.28em] text-stone-500">
+              Slug
+            </span>
+            <span className="font-[family-name:var(--font-plex-mono)] text-sm text-stone-100">
+              {data.team.slug}
+            </span>
           </div>
         </header>
 
-        <section className="grid gap-4 rounded-lg border border-border bg-card p-4 text-card-foreground shadow-sm md:grid-cols-[minmax(0,1fr)_minmax(16rem,24rem)] md:p-6">
-          <div className="space-y-1">
-            <h2 className="text-lg font-medium">Team settings</h2>
-            <p className="text-sm text-muted-foreground">
-              Rename the team and review immutable identifiers.
+        <section className="motion-safe:animate-[reveal-up_700ms_120ms_cubic-bezier(0.22,1,0.36,1)_both] grid gap-6 rounded-md border border-stone-800/80 bg-stone-950/60 p-5 backdrop-blur md:grid-cols-[minmax(0,1fr)_minmax(18rem,28rem)] md:p-7">
+          <div className="space-y-3">
+            <span className="font-[family-name:var(--font-plex-mono)] text-[10px] uppercase tracking-[0.28em] text-stone-500">
+              Card / 0301 — settings
+            </span>
+            <h2
+              className="font-[family-name:var(--font-fraunces)] text-[1.6rem] leading-tight text-stone-100"
+              style={{ fontVariationSettings: "'opsz' 48" }}
+            >
+              Team settings
+            </h2>
+            <p className="text-sm leading-relaxed text-stone-400">
+              Rename the team and review the immutable identifiers your agents
+              and members reference.
             </p>
           </div>
 
-          <div className="space-y-5">
+          <div className="space-y-6">
             <form className="space-y-2" onSubmit={submitRename}>
-              <Label htmlFor="team-name">Team name</Label>
+              <Label
+                htmlFor="team-name"
+                className="font-[family-name:var(--font-plex-mono)] text-[11px] uppercase tracking-[0.28em] text-stone-400"
+              >
+                Team name
+              </Label>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <Input
                   id="team-name"
@@ -266,10 +298,12 @@ export function TeamAdminClient({
                   maxLength={80}
                   disabled={!data.permissions.canRenameTeam || isPending}
                   required
+                  className="h-11 border-stone-800/80 bg-stone-950/70 text-stone-100 placeholder:text-stone-600 focus-visible:border-amber-200/70 focus-visible:ring-amber-200/30"
                 />
                 <Button
                   type="submit"
                   disabled={!data.permissions.canRenameTeam || isPending}
+                  className="h-11 bg-amber-200 text-stone-950 shadow-[0_0_0_1px_rgba(252,211,77,0.35),0_18px_50px_-20px_rgba(252,211,77,0.45)] hover:bg-amber-100"
                 >
                   {isPending ? <Loader2 className="animate-spin" /> : null}
                   Save
@@ -277,28 +311,49 @@ export function TeamAdminClient({
               </div>
             </form>
 
-            <dl className="grid gap-3 text-sm sm:grid-cols-2">
-              <div>
-                <dt className="text-muted-foreground">Slug</dt>
-                <dd className="mt-1 font-mono">{data.team.slug}</dd>
+            <dl className="grid gap-4 text-sm sm:grid-cols-2">
+              <div className="rounded-md border border-stone-800/80 bg-stone-950/40 p-3">
+                <dt className="font-[family-name:var(--font-plex-mono)] text-[10px] uppercase tracking-[0.28em] text-stone-500">
+                  Slug
+                </dt>
+                <dd className="mt-1 font-[family-name:var(--font-plex-mono)] text-stone-100">
+                  {data.team.slug}
+                </dd>
               </div>
-              <div>
-                <dt className="text-muted-foreground">Created</dt>
-                <dd className="mt-1">{formatDate(data.team.createdAt)}</dd>
+              <div className="rounded-md border border-stone-800/80 bg-stone-950/40 p-3">
+                <dt className="font-[family-name:var(--font-plex-mono)] text-[10px] uppercase tracking-[0.28em] text-stone-500">
+                  Created
+                </dt>
+                <dd className="mt-1 text-stone-100">
+                  {formatDate(data.team.createdAt)}
+                </dd>
               </div>
             </dl>
           </div>
         </section>
 
-        <section className="space-y-4 rounded-lg border border-border bg-card p-4 text-card-foreground shadow-sm md:p-6">
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h2 className="text-lg font-medium">Members</h2>
-              <p className="text-sm text-muted-foreground">
+        <section className="motion-safe:animate-[reveal-up_700ms_180ms_cubic-bezier(0.22,1,0.36,1)_both] space-y-5 rounded-md border border-stone-800/80 bg-stone-950/60 p-5 backdrop-blur md:p-7">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div className="space-y-2">
+              <span className="font-[family-name:var(--font-plex-mono)] text-[10px] uppercase tracking-[0.28em] text-stone-500">
+                Card / 0302 — members
+              </span>
+              <h2
+                className="font-[family-name:var(--font-fraunces)] text-[1.6rem] leading-tight text-stone-100"
+                style={{ fontVariationSettings: "'opsz' 48" }}
+              >
+                Members
+              </h2>
+              <p className="text-sm text-stone-400">
                 Human team members and their current access.
               </p>
             </div>
-            <Badge variant="outline">{members.length} total</Badge>
+            <Badge
+              variant="outline"
+              className="self-start border-stone-700 bg-stone-950/60 font-[family-name:var(--font-plex-mono)] text-[10px] uppercase tracking-[0.24em] text-stone-300 sm:self-end"
+            >
+              {members.length} total
+            </Badge>
           </div>
 
           <Table aria-label="Team members">
@@ -365,16 +420,29 @@ export function TeamAdminClient({
           </Table>
         </section>
 
-        <section className="grid gap-4 rounded-lg border border-border bg-card p-4 text-card-foreground shadow-sm lg:grid-cols-[minmax(0,1fr)_24rem] md:p-6">
-          <div className="space-y-4">
-            <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <h2 className="text-lg font-medium">Pending invitations</h2>
-                <p className="text-sm text-muted-foreground">
+        <section className="motion-safe:animate-[reveal-up_700ms_240ms_cubic-bezier(0.22,1,0.36,1)_both] grid gap-6 rounded-md border border-stone-800/80 bg-stone-950/60 p-5 backdrop-blur lg:grid-cols-[minmax(0,1fr)_24rem] md:p-7">
+          <div className="space-y-5">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div className="space-y-2">
+                <span className="font-[family-name:var(--font-plex-mono)] text-[10px] uppercase tracking-[0.28em] text-stone-500">
+                  Card / 0303 — invitations
+                </span>
+                <h2
+                  className="font-[family-name:var(--font-fraunces)] text-[1.6rem] leading-tight text-stone-100"
+                  style={{ fontVariationSettings: "'opsz' 48" }}
+                >
+                  Pending invitations
+                </h2>
+                <p className="text-sm text-stone-400">
                   Open invites that have not been accepted.
                 </p>
               </div>
-              <Badge variant="outline">{invitations.length} pending</Badge>
+              <Badge
+                variant="outline"
+                className="self-start border-stone-700 bg-stone-950/60 font-[family-name:var(--font-plex-mono)] text-[10px] uppercase tracking-[0.24em] text-stone-300 sm:self-end"
+              >
+                {invitations.length} pending
+              </Badge>
             </div>
 
             <Table aria-label="Pending invitations">
@@ -451,17 +519,28 @@ export function TeamAdminClient({
 
           {data.permissions.canManageInvitations ? (
             <form
-              className="space-y-4 rounded-md border border-border bg-background p-4"
+              className="space-y-5 rounded-md border border-stone-800/80 bg-stone-950/40 p-5"
               onSubmit={submitInvite}
             >
-              <div className="space-y-1">
-                <h3 className="font-medium">Invite member</h3>
-                <p className="text-sm text-muted-foreground">
-                  Send an expiring invite link to a human teammate.
+              <div className="space-y-2">
+                <span className="font-[family-name:var(--font-plex-mono)] text-[10px] uppercase tracking-[0.28em] text-amber-200/80">
+                  Issue invitation
+                </span>
+                <h3 className="font-[family-name:var(--font-fraunces)] text-xl leading-tight text-stone-100">
+                  Invite member
+                </h3>
+                <p className="text-sm leading-relaxed text-stone-400">
+                  Send an expiring invite link to a human teammate. The link is
+                  copied to your clipboard on creation.
                 </p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="invite-email">Email</Label>
+                <Label
+                  htmlFor="invite-email"
+                  className="font-[family-name:var(--font-plex-mono)] text-[11px] uppercase tracking-[0.28em] text-stone-400"
+                >
+                  Email
+                </Label>
                 <Input
                   id="invite-email"
                   name="email"
@@ -469,13 +548,23 @@ export function TeamAdminClient({
                   autoComplete="email"
                   placeholder="name@example.com"
                   required
+                  className="h-11 border-stone-800/80 bg-stone-950/70 text-stone-100 placeholder:text-stone-600 focus-visible:border-amber-200/70 focus-visible:ring-amber-200/30"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="invite-role">Role</Label>
+                <Label
+                  htmlFor="invite-role"
+                  className="font-[family-name:var(--font-plex-mono)] text-[11px] uppercase tracking-[0.28em] text-stone-400"
+                >
+                  Role
+                </Label>
                 <InviteRoleSelect />
               </div>
-              <Button type="submit" className="w-full" disabled={isPending}>
+              <Button
+                type="submit"
+                className="h-11 w-full bg-amber-200 text-stone-950 shadow-[0_0_0_1px_rgba(252,211,77,0.35),0_18px_50px_-20px_rgba(252,211,77,0.55)] hover:bg-amber-100"
+                disabled={isPending}
+              >
                 {isPending ? <Loader2 className="animate-spin" /> : <Send />}
                 Send invite
               </Button>

@@ -17,6 +17,7 @@ import {
   hashInvitationToken,
 } from "@/lib/invitations/tokens";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { requestAwareAppUrl } from "@/lib/url";
 
 const INVITATION_TTL_DAYS = 7;
 const UUID_RE =
@@ -176,7 +177,7 @@ export async function createInvitation(
     data: { user },
   } = await supabase.auth.getUser();
   const inviterName = inviterDisplayName(user);
-  const link = invitationLink(token);
+  const link = await invitationLink(token);
 
   await sendEmail({
     to: email,
@@ -235,7 +236,7 @@ export async function regenerateInvitationLink(
 
   return {
     invitation: data as PendingInvitation,
-    link: invitationLink(token),
+    link: await invitationLink(token),
   };
 }
 
@@ -271,7 +272,6 @@ function inviterDisplayName(user: { email?: string; user_metadata?: unknown } | 
   return fullName || user?.email || "A teammate";
 }
 
-function invitationLink(token: string): string {
-  const appUrl = process.env.APP_URL ?? "http://localhost:3000";
-  return `${appUrl.replace(/\/$/, "")}/invite/${token}`;
+async function invitationLink(token: string): Promise<string> {
+  return requestAwareAppUrl(`/invite/${token}`);
 }

@@ -24,14 +24,23 @@ supabase start
 ```
 
 This boots Postgres, Auth, Studio, etc. on local ports and prints the
-generated API URL, anon key, and service-role key. Copy the relevant values
-into `apps/web/.env.local`:
+generated API URL, anon key, and service-role key. If you use the local
+Supabase stack, copy the relevant values into the repo root `.env.local`;
+the root `dev` and `dev:web` scripts load that file with
+`bun --env-file=.env.local`:
 
 ```env
+APP_URL=http://localhost:3000
 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key from `supabase start`>
 SUPABASE_SECRET_KEY=<service-role key from `supabase start`>
 ```
+
+If you use the hosted Supabase project for local web development, keep
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and
+`SUPABASE_SECRET_KEY` pointed at the hosted project. Invite links derive the
+current `localhost` origin from the incoming request, while non-local requests
+fall back to `APP_URL`.
 
 ### Reset the database
 
@@ -83,6 +92,21 @@ User-scoped tables (`user_profiles`) are guarded directly by `auth.uid()`.
 Team member API keys are stored in `team_member_api_keys`, linked to
 `team_members` by `(team_id, member_id)`. This lets either a human member or an
 agent member have multiple independently revocable keys for rotation.
+
+### Issuing an agent key
+
+Owners and admins can issue agent keys from `/admin/agents` in the web app.
+The page uses the signed-in browser session to create an agent membership and
+reveals the plaintext API key once. Store that key outside the repository, then
+pass it to agent-facing API calls as:
+
+```bash
+Authorization: Bearer <agent-key>
+```
+
+Agent keys authenticate against the Notes API (`/api/notes`, append/link,
+revision, archive, and restore endpoints). The agent-facing CLI/API guide lives
+at `packages/cli/AGENT_CLI.md` from the repo root.
 
 ## Web app
 

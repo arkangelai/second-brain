@@ -1,4 +1,4 @@
-import { describe, expect, it, mock } from "bun:test";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 
 type TeamMemberRow = {
   team_id: string;
@@ -22,7 +22,7 @@ type ProfileRow = {
 type SupabaseStub = {
   client: {
     auth: {
-      getUser: () => { data: { user: { id: string } }; error: null };
+      getUser: (token?: string) => { data: { user: { id: string } }; error: null };
     };
     from: (table: string) => AdminQuery;
   };
@@ -43,15 +43,27 @@ type AdminQuery = {
 };
 
 let supabaseStub: SupabaseStub;
+let sessionUser: { id: string } | null;
 
 mock.module("server-only", () => ({}));
 mock.module("@/lib/supabase/admin", () => ({
   createSupabaseAdminClient: () => supabaseStub.client,
 }));
+mock.module("@/lib/supabase/server", () => ({
+  createServerSupabaseClient: () => ({
+    auth: {
+      getUser: () => ({ data: { user: sessionUser }, error: null }),
+    },
+  }),
+}));
 
 const { resolveAdminContext } = await import("./admin");
 
 describe("resolveAdminContext", () => {
+  beforeEach(() => {
+    sessionUser = null;
+  });
+
   it("falls back to an active owner/admin human membership", async () => {
     supabaseStub = createSupabaseStub({
       teamMembers: [
@@ -136,6 +148,44 @@ describe("resolveAdminContext", () => {
 
     expect("team" in context && context.team.id).toBe("admin-team");
     expect("role" in context && context.role).toBe("owner");
+  });
+
+  it("uses the browser session user and active team cookie for admin pages", async () => {
+    sessionUser = { id: "user-id" };
+    supabaseStub = createSupabaseStub({
+      defaultTeamId: "default-team",
+      teamMembers: [
+        {
+          team_id: "default-team",
+          user_id: "user-id",
+          member_type: "human",
+          role: "member",
+          active: true,
+          joined_at: "2024-01-01T00:00:00Z",
+        },
+        {
+          team_id: "active-cookie-team",
+          user_id: "user-id",
+          member_type: "human",
+          role: "admin",
+          active: true,
+          joined_at: "2024-01-02T00:00:00Z",
+        },
+      ],
+      teams: [
+        { id: "default-team", slug: "default", name: "Default Team" },
+        { id: "active-cookie-team", slug: "active", name: "Active Team" },
+      ],
+    });
+
+    const context = await resolveAdminContext(
+      new Request("http://localhost/api/admin/agents", {
+        headers: { cookie: "sb_active_team=active-cookie-team" },
+      }),
+    );
+
+    expect("team" in context && context.team.id).toBe("active-cookie-team");
+    expect("role" in context && context.role).toBe("admin");
   });
 });
 

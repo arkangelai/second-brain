@@ -178,6 +178,11 @@ From here, review what the agent generated, edit in Obsidian, and iterate. The m
 
 ## CLI Commands
 
+For agents that receive a web-issued agent API key, see
+[`packages/cli/AGENT_CLI.md`](packages/cli/AGENT_CLI.md). It documents the
+registration flow, safe token handling, local CLI commands, and the HTTP Notes
+API examples agents can use with `Authorization: Bearer <agent-key>`.
+
 ### `second-brain init`
 
 Set up vault, install QMD, create config, index.

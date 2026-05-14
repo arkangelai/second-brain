@@ -153,23 +153,29 @@ export function AgentsAdminClient({
   }
 
   return (
-    <main className="min-h-dvh bg-background text-foreground">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
-        <header className="flex flex-col gap-4 border-b border-border pb-6 md:flex-row md:items-end md:justify-between">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <ShieldCheck className="size-4 text-emerald-400" />
-              <span>Admin</span>
-            </div>
-            <h1 className="text-3xl font-semibold tracking-tight">
-              Agent Registry
+    <main className="relative text-stone-200">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-10 px-4 py-10 sm:px-6 lg:px-8">
+        <header className="motion-safe:animate-[reveal-up_700ms_cubic-bezier(0.22,1,0.36,1)_both] flex flex-col gap-6 border-b border-stone-800/70 pb-8 md:flex-row md:items-end md:justify-between">
+          <div className="space-y-4">
+            <span className="inline-flex items-center gap-2 font-[family-name:var(--font-plex-mono)] text-[11px] uppercase tracking-[0.3em] text-teal-200/80">
+              <ShieldCheck className="size-3.5" aria-hidden />
+              Vault administration / agent registry
+            </span>
+            <h1
+              className="font-[family-name:var(--font-fraunces)] text-[clamp(2.25rem,4vw,3.5rem)] font-light leading-[1.02] text-stone-100"
+              style={{ fontVariationSettings: "'opsz' 96, 'SOFT' 30" }}
+            >
+              Agent{" "}
+              <em className="font-normal italic text-amber-200/95">
+                registry
+              </em>
             </h1>
-            <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+            <p className="max-w-2xl text-sm leading-relaxed text-stone-400">
               Register AI agents, assign vault scopes, reveal the one-time key,
               and revoke compromised credentials.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <StatusBadge tone={canManage ? "green" : "amber"}>
               {roleLabel(role)}
             </StatusBadge>
@@ -180,6 +186,7 @@ export function AgentsAdminClient({
               onClick={() => void loadAgents()}
               title="Refresh agents"
               aria-label="Refresh agents"
+              className="border-stone-700/80 bg-stone-950/60 text-stone-200 hover:border-amber-200/60 hover:bg-stone-900 hover:text-amber-100"
             >
               <RefreshCw className={cn("size-4", loading && "animate-spin")} />
             </Button>
@@ -187,18 +194,27 @@ export function AgentsAdminClient({
         </header>
 
         {error ? (
-          <div className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive-foreground">
+          <div className="rounded-md border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
             {error}
           </div>
         ) : null}
 
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_25rem]">
-          <section className="min-w-0 space-y-4">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-medium">Agents</h2>
-                <p className="text-sm text-muted-foreground">
-                  {agents.length} registered
+          <section className="motion-safe:animate-[reveal-up_700ms_120ms_cubic-bezier(0.22,1,0.36,1)_both] min-w-0 space-y-5">
+            <div className="flex items-end justify-between gap-4">
+              <div className="space-y-2">
+                <span className="font-[family-name:var(--font-plex-mono)] text-[10px] uppercase tracking-[0.28em] text-stone-500">
+                  Card / 0401 — registry
+                </span>
+                <h2
+                  className="font-[family-name:var(--font-fraunces)] text-[1.6rem] leading-tight text-stone-100"
+                  style={{ fontVariationSettings: "'opsz' 48" }}
+                >
+                  Registered agents
+                </h2>
+                <p className="text-sm text-stone-400">
+                  {agents.length}{" "}
+                  {agents.length === 1 ? "agent" : "agents"} in this vault
                 </p>
               </div>
             </div>
@@ -211,11 +227,21 @@ export function AgentsAdminClient({
             />
           </section>
 
-          <section className="space-y-4">
-            <div>
-              <h2 className="text-lg font-medium">Create Agent</h2>
-              <p className="text-sm text-muted-foreground">
-                {canManage ? "New keys are revealed once." : "Members have read-only access."}
+          <section className="motion-safe:animate-[reveal-up_700ms_220ms_cubic-bezier(0.22,1,0.36,1)_both] space-y-5">
+            <div className="space-y-2">
+              <span className="font-[family-name:var(--font-plex-mono)] text-[10px] uppercase tracking-[0.28em] text-amber-200/80">
+                Card / 0402 — issue key
+              </span>
+              <h2
+                className="font-[family-name:var(--font-fraunces)] text-[1.6rem] leading-tight text-stone-100"
+                style={{ fontVariationSettings: "'opsz' 48" }}
+              >
+                Create agent
+              </h2>
+              <p className="text-sm text-stone-400">
+                {canManage
+                  ? "New keys are revealed once — copy on the spot."
+                  : "Members have read-only access."}
               </p>
             </div>
             <CreateAgentForm
@@ -255,66 +281,91 @@ function AgentsTable({
   onRevoke: (agent: AgentSummary) => void;
 }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-border">
+    <div className="overflow-hidden rounded-md border border-stone-800/80 bg-stone-950/40 backdrop-blur">
       <div className="overflow-x-auto">
         <table className="w-full min-w-[52rem] text-left text-sm">
-          <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+          <thead className="bg-stone-950/70 font-[family-name:var(--font-plex-mono)] text-[10px] uppercase tracking-[0.24em] text-stone-500">
             <tr>
               <th className="px-4 py-3 font-medium">Name</th>
               <th className="px-4 py-3 font-medium">Status</th>
               <th className="px-4 py-3 font-medium">Scopes</th>
-              <th className="px-4 py-3 font-medium">Last Seen</th>
-              <th className="px-4 py-3 font-medium">Created By</th>
+              <th className="px-4 py-3 font-medium">Last seen</th>
+              <th className="px-4 py-3 font-medium">Created by</th>
               <th className="px-4 py-3 text-right font-medium">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
+          <tbody className="divide-y divide-stone-800/70">
             {loading ? (
               <tr>
-                <td className="px-4 py-8 text-center text-muted-foreground" colSpan={6}>
-                  <Loader2 className="mx-auto mb-2 size-5 animate-spin" />
+                <td
+                  className="px-4 py-10 text-center font-[family-name:var(--font-plex-mono)] text-[11px] uppercase tracking-[0.28em] text-stone-500"
+                  colSpan={6}
+                >
+                  <Loader2 className="mx-auto mb-3 size-4 animate-spin text-teal-300/80" />
                   Loading agents
                 </td>
               </tr>
             ) : null}
             {!loading && agents.length === 0 ? (
               <tr>
-                <td className="px-4 py-8 text-center text-muted-foreground" colSpan={6}>
-                  No agents registered
+                <td
+                  className="px-4 py-10 text-center text-sm text-stone-500"
+                  colSpan={6}
+                >
+                  <span className="font-[family-name:var(--font-plex-mono)] text-[10px] uppercase tracking-[0.28em] text-stone-600">
+                    Empty registry
+                  </span>
+                  <p className="mt-2 font-[family-name:var(--font-fraunces)] text-lg italic text-stone-300">
+                    No agents registered yet.
+                  </p>
                 </td>
               </tr>
             ) : null}
             {agents.map((agent) => (
-              <tr key={agent.id} className="bg-background align-top">
+              <tr
+                key={agent.id}
+                className="bg-transparent align-top transition-colors hover:bg-stone-900/40"
+              >
                 <td className="px-4 py-4">
-                  <div className="font-medium">{agent.name}</div>
-                  {agent.description ? (
-                    <div className="mt-1 max-w-64 text-xs text-muted-foreground">
-                      {agent.description}
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md border border-stone-800/80 bg-stone-950 font-[family-name:var(--font-fraunces)] text-sm text-teal-200/90">
+                      {agent.name.slice(0, 1).toUpperCase()}
+                    </span>
+                    <div>
+                      <div className="font-[family-name:var(--font-fraunces)] text-base leading-tight text-stone-100">
+                        {agent.name}
+                      </div>
+                      {agent.description ? (
+                        <div className="mt-1 max-w-64 text-xs leading-relaxed text-stone-500">
+                          {agent.description}
+                        </div>
+                      ) : null}
                     </div>
-                  ) : null}
+                  </div>
                 </td>
                 <td className="px-4 py-4">
-                  <StatusBadge tone={agent.status === "active" ? "green" : "red"}>
+                  <StatusBadge
+                    tone={agent.status === "active" ? "green" : "red"}
+                  >
                     {agent.status === "active" ? "Active" : "Revoked"}
                   </StatusBadge>
                 </td>
                 <td className="px-4 py-4">
-                  <div className="max-w-80 text-muted-foreground">
+                  <div className="max-w-80 font-[family-name:var(--font-plex-mono)] text-xs leading-relaxed text-stone-400">
                     {summarizeAgentScopes(agent.scopes)}
                   </div>
                 </td>
-                <td className="px-4 py-4 text-muted-foreground">
+                <td className="px-4 py-4 text-stone-400">
                   {formatDate(agent.lastSeen)}
                 </td>
-                <td className="px-4 py-4 font-mono text-xs text-muted-foreground">
+                <td className="px-4 py-4 font-[family-name:var(--font-plex-mono)] text-xs text-stone-500">
                   {agent.createdBy ? shortId(agent.createdBy) : "system"}
                 </td>
                 <td className="px-4 py-4">
                   <div className="flex justify-end gap-2">
                     <Button
                       type="button"
-                      variant="destructive"
+                      variant="ghost"
                       size="icon"
                       disabled={
                         !canManage ||
@@ -324,6 +375,7 @@ function AgentsTable({
                       onClick={() => onRevoke(agent)}
                       title="Revoke agent"
                       aria-label={`Revoke ${agent.name}`}
+                      className="text-stone-400 hover:bg-red-500/15 hover:text-red-200"
                     >
                       {revokingId === agent.id ? (
                         <Loader2 className="size-4 animate-spin" />
@@ -425,62 +477,69 @@ function CreateAgentForm({
 
   return (
     <form
-      className="space-y-5 rounded-lg border border-border bg-card/40 p-4"
+      className="space-y-5 rounded-md border border-stone-800/80 bg-stone-950/60 p-5 backdrop-blur"
       onSubmit={submit}
     >
       <fieldset disabled={!canManage || submitting} className="space-y-5">
-        <label className="grid gap-2 text-sm">
-          <span className="font-medium">Name</span>
+        <FormField id="agent-name" label="Name">
           <input
+            id="agent-name"
             value={name}
             onChange={(event) => setName(event.target.value)}
             minLength={2}
             required
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm outline-none transition focus:border-ring focus:ring-1 focus:ring-ring"
+            className="h-11 w-full rounded-md border border-stone-800/80 bg-stone-950/70 px-3 font-[family-name:var(--font-plex-mono)] text-sm text-stone-100 placeholder:text-stone-600 outline-none transition focus:border-amber-200/70 focus:ring-1 focus:ring-amber-200/30"
             placeholder="claudio"
           />
-        </label>
+        </FormField>
 
-        <label className="grid gap-2 text-sm">
-          <span className="font-medium">Description</span>
+        <FormField id="agent-description" label="Description">
           <textarea
+            id="agent-description"
             value={description}
             onChange={(event) => setDescription(event.target.value)}
-            className="min-h-20 resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition focus:border-ring focus:ring-1 focus:ring-ring"
+            className="min-h-24 w-full resize-y rounded-md border border-stone-800/80 bg-stone-950/70 px-3 py-2 text-sm text-stone-100 placeholder:text-stone-600 outline-none transition focus:border-amber-200/70 focus:ring-1 focus:ring-amber-200/30"
             placeholder="Writes daily research notes"
           />
-        </label>
+        </FormField>
 
-        <label className="grid gap-2 text-sm">
-          <span className="font-medium">Scope Template</span>
+        <FormField id="agent-template" label="Scope template">
           <select
+            id="agent-template"
             value={template}
             onChange={(event) =>
               updateTemplate(event.target.value as ScopeTemplateName)
             }
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm outline-none transition focus:border-ring focus:ring-1 focus:ring-ring"
+            className="h-11 w-full rounded-md border border-stone-800/80 bg-stone-950/70 px-3 text-sm text-stone-100 outline-none transition focus:border-amber-200/70 focus:ring-1 focus:ring-amber-200/30"
           >
             {templateOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label} - {option.description}
+              <option
+                key={option.value}
+                value={option.value}
+                className="bg-stone-950"
+              >
+                {option.label} — {option.description}
               </option>
             ))}
           </select>
-        </label>
+        </FormField>
 
         {template === "custom" ? (
-          <details open className="rounded-md border border-border bg-background/60 p-3">
-            <summary className="cursor-pointer text-sm font-medium">
+          <details
+            open
+            className="rounded-md border border-stone-800/80 bg-stone-950/50 p-3"
+          >
+            <summary className="cursor-pointer font-[family-name:var(--font-plex-mono)] text-[11px] uppercase tracking-[0.28em] text-stone-400">
               Scope JSON
             </summary>
             <textarea
               value={scopeJson}
               onChange={(event) => setScopeJson(event.target.value)}
               spellCheck={false}
-              className="mt-3 min-h-72 w-full resize-y rounded-md border border-input bg-background p-3 font-mono text-xs leading-5 outline-none transition focus:border-ring focus:ring-1 focus:ring-ring"
+              className="mt-3 min-h-72 w-full resize-y rounded-md border border-stone-800/80 bg-stone-950/80 p-3 font-mono text-xs leading-5 text-stone-100 outline-none transition focus:border-amber-200/70 focus:ring-1 focus:ring-amber-200/30"
             />
             {scopeError ? (
-              <p className="mt-2 text-sm text-destructive-foreground">
+              <p className="mt-2 rounded-md border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
                 {scopeError}
               </p>
             ) : null}
@@ -488,12 +547,16 @@ function CreateAgentForm({
         ) : null}
 
         {template !== "custom" ? (
-          <div className="rounded-md border border-border bg-background/60 p-3 text-xs leading-5 text-muted-foreground">
+          <div className="rounded-md border border-stone-800/80 bg-stone-950/40 p-3 font-[family-name:var(--font-plex-mono)] text-xs leading-relaxed text-stone-400">
             {summarizeAgentScopes(scopeTemplates[template])}
           </div>
         ) : null}
 
-        <Button type="submit" className="w-full" disabled={!canManage || submitting}>
+        <Button
+          type="submit"
+          className="h-11 w-full bg-amber-200 text-stone-950 shadow-[0_0_0_1px_rgba(252,211,77,0.35),0_18px_50px_-20px_rgba(252,211,77,0.55)] hover:bg-amber-100"
+          disabled={!canManage || submitting}
+        >
           {submitting ? (
             <Loader2 className="size-4 animate-spin" />
           ) : (
@@ -503,6 +566,28 @@ function CreateAgentForm({
         </Button>
       </fieldset>
     </form>
+  );
+}
+
+function FormField({
+  id,
+  label,
+  children,
+}: {
+  id: string;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-2">
+      <label
+        htmlFor={id}
+        className="font-[family-name:var(--font-plex-mono)] text-[11px] uppercase tracking-[0.28em] text-stone-400"
+      >
+        {label}
+      </label>
+      {children}
+    </div>
   );
 }
 
@@ -538,31 +623,53 @@ function KeyRevealDialog({
         showClose={false}
         onEscapeKeyDown={(event) => event.preventDefault()}
         onPointerDownOutside={(event) => event.preventDefault()}
+        className="border-stone-800/80 bg-stone-950 text-stone-200"
       >
         <DialogHeader>
-          <div className="mb-2 flex size-10 items-center justify-center rounded-md bg-emerald-500/15 text-emerald-300">
+          <div className="mb-3 flex size-11 items-center justify-center rounded-md border border-amber-300/30 bg-amber-300/10 text-amber-200">
             <KeyRound className="size-5" />
           </div>
-          <DialogTitle>{createdKey.agentName} API key</DialogTitle>
-          <DialogDescription>
-            You will not see this again.
+          <span className="font-[family-name:var(--font-plex-mono)] text-[10px] uppercase tracking-[0.28em] text-amber-200/85">
+            Reveal one time / record now
+          </span>
+          <DialogTitle
+            className="font-[family-name:var(--font-fraunces)] text-2xl text-stone-100"
+            style={{ fontVariationSettings: "'opsz' 48" }}
+          >
+            {createdKey.agentName} API key
+          </DialogTitle>
+          <DialogDescription className="text-stone-400">
+            You will not see this again. Copy it now and store it in the agent
+            environment.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="rounded-md border border-border bg-background p-3">
-          <code className="block break-all font-mono text-xs leading-5">
+        <div className="relative rounded-md border border-stone-800/80 bg-stone-950/80 p-4">
+          <span className="absolute -top-2 left-3 inline-flex bg-stone-950 px-1 font-[family-name:var(--font-plex-mono)] text-[10px] uppercase tracking-[0.28em] text-stone-500">
+            plaintext / once
+          </span>
+          <code className="block break-all font-mono text-xs leading-relaxed text-stone-100">
             {createdKey.plaintextKey}
           </code>
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row">
-          <Button type="button" variant="outline" className="flex-1" onClick={copyKey}>
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1 border-stone-700/80 bg-stone-950/60 text-stone-200 hover:border-amber-200/60 hover:bg-stone-900 hover:text-amber-100"
+            onClick={copyKey}
+          >
             {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
             {copied ? "Copied" : "Copy key"}
           </Button>
-          <Button type="button" className="flex-1" onClick={done}>
+          <Button
+            type="button"
+            className="flex-1 bg-amber-200 text-stone-950 shadow-[0_0_0_1px_rgba(252,211,77,0.35),0_18px_50px_-20px_rgba(252,211,77,0.55)] hover:bg-amber-100"
+            onClick={done}
+          >
             <Clipboard className="size-4" />
-            I've copied it
+            I&apos;ve copied it
           </Button>
         </div>
       </DialogContent>
@@ -580,14 +687,22 @@ function StatusBadge({
   return (
     <span
       className={cn(
-        "inline-flex h-7 items-center rounded-md border px-2.5 text-xs font-medium",
+        "inline-flex h-7 items-center gap-2 rounded-md border px-2.5 font-[family-name:var(--font-plex-mono)] text-[10px] uppercase tracking-[0.22em]",
         tone === "green" &&
-          "border-emerald-400/30 bg-emerald-500/10 text-emerald-300",
+          "border-emerald-400/30 bg-emerald-500/10 text-emerald-200",
         tone === "amber" &&
           "border-amber-400/30 bg-amber-500/10 text-amber-200",
-        tone === "red" && "border-red-400/30 bg-red-500/10 text-red-300"
+        tone === "red" && "border-red-400/30 bg-red-500/10 text-red-200"
       )}
     >
+      <span
+        className={cn(
+          "size-1.5 rounded-full",
+          tone === "green" && "bg-emerald-300/90",
+          tone === "amber" && "bg-amber-300/90",
+          tone === "red" && "bg-red-300/90"
+        )}
+      />
       {children}
     </span>
   );
