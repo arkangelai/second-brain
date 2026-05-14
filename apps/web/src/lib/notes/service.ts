@@ -12,7 +12,7 @@ import { jsonError } from "@/lib/api/responses";
 import { withTeamContext } from "@/lib/db/withTeamContext";
 import type { PoolClient } from "@/lib/db/pool";
 import { insertWikiLink, normalizeFolder, normalizeSlug, slugifyTitle } from "@/lib/notes/markdown";
-import { canWrite, type PolicyPrincipal } from "@/lib/policy";
+import { canRead, canWrite, type PolicyDecision, type PolicyPrincipal } from "@/lib/policy";
 
 export type NotesPrincipal = PolicyPrincipal;
 
@@ -99,8 +99,12 @@ export async function listNotes(
       ],
     );
 
+    const visibleRows = result.rows.filter(
+      (note) => canRead(principal, "search", noteTarget(note)).allowed,
+    );
+
     return ok({
-      notes: result.rows.map(toNoteRecord),
+      notes: visibleRows.map(toNoteRecord),
       next_updated_before:
         result.rows.length === boundedLimit
           ? toNoteRecord(result.rows[result.rows.length - 1]).updated_at
@@ -117,6 +121,8 @@ export async function getNote(
   return withPrincipalTeam(principal, async (client) => {
     const note = await findNote(client, principal.team_id, slug);
     if (!note) return err(404, "Note not found");
+    const policy = canRead(principal, "get", noteTarget(note));
+    if (!policy.allowed) return policyErr(policy);
     if (note.archived_at && !includeArchived) return err(410, "Note archived");
 
     const linksIn = await loadLinksIn(client, principal.team_id, note.slug);
@@ -155,6 +161,8 @@ export async function listRevisions(
   return withPrincipalTeam(principal, async (client) => {
     const note = await findNote(client, principal.team_id, slug);
     if (!note) return err(404, "Note not found");
+    const policy = canRead(principal, "get", noteTarget(note));
+    if (!policy.allowed) return policyErr(policy);
 
     const revisions = await loadRevisions(client, note.id, {
       before,
@@ -191,48 +199,50 @@ export async function createNote(
   if (!policy.allowed) return policyErr(policy);
 
   return withPrincipalTeam(principal, async (client) => {
-    const slug = await uniqueSlug(client, principal.team_id, baseSlug);
-    if (request.slug && slug !== baseSlug) {
-      return {
-        ok: false,
-        error: {
-          status: 409,
-          body: {
-            error: "Slug already exists",
-            suggested_slug: slug,
-          },
-        },
-      };
+    await setNoteAudit(client, principal, "create", "create note");
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const slug = await uniqueSlug(client, principal.team_id, baseSlug);
+      if (request.slug && slug !== baseSlug) {
+        return slugConflict(slug);
+      }
+
+      const result = await client.query<DbNoteRow>(
+        `insert into public.notes (
+          team_id,
+          slug,
+          folder,
+          title,
+          body,
+          frontmatter,
+          created_by,
+          created_by_type,
+          updated_by,
+          updated_by_type
+        ) values ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $7, $8)
+        on conflict (team_id, slug) do nothing
+        returning *`,
+        [
+          principal.team_id,
+          slug,
+          folder,
+          request.title.trim(),
+          request.body,
+          JSON.stringify(frontmatter),
+          principal.id,
+          principal.kind,
+        ],
+      );
+
+      if (result.rows[0]) {
+        return ok(toNoteRecord(result.rows[0]));
+      }
+
+      if (request.slug) {
+        return slugConflict(await uniqueSlug(client, principal.team_id, baseSlug));
+      }
     }
 
-    await setNoteAudit(client, principal, "create", "create note");
-    const result = await client.query<DbNoteRow>(
-      `insert into public.notes (
-        team_id,
-        slug,
-        folder,
-        title,
-        body,
-        frontmatter,
-        created_by,
-        created_by_type,
-        updated_by,
-        updated_by_type
-      ) values ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $7, $8)
-      returning *`,
-      [
-        principal.team_id,
-        slug,
-        folder,
-        request.title.trim(),
-        request.body,
-        JSON.stringify(frontmatter),
-        principal.id,
-        principal.kind,
-      ],
-    );
-
-    return ok(toNoteRecord(result.rows[0]));
+    return slugConflict(await uniqueSlug(client, principal.team_id, baseSlug));
   });
 }
 
@@ -680,6 +690,14 @@ function toRevisionRecord(row: DbRevisionRow): NoteRevision {
   };
 }
 
+function noteTarget(note: Pick<DbNoteRow, "folder" | "slug" | "frontmatter">) {
+  return {
+    folder: note.folder,
+    slug: String(note.slug),
+    frontmatter: note.frontmatter,
+  };
+}
+
 function etagHeaders(note: Pick<DbNoteRow, "slug" | "version">): HeadersInit {
   return { ETag: `"${String(note.slug)}:${note.version}"` };
 }
@@ -705,10 +723,16 @@ function err(
   };
 }
 
-function policyErr(policy: Exclude<ReturnType<typeof canWrite>, { allowed: true }>): NotesResult<never> {
+function policyErr(policy: Exclude<PolicyDecision, { allowed: true }>): NotesResult<never> {
   return err(policy.code === "frontmatter_invalid" ? 400 : 403, policy.reason, {
     code: policy.code,
     ...(policy.hint ? { hint: policy.hint } : {}),
+  });
+}
+
+function slugConflict(suggestedSlug: string): NotesResult<never> {
+  return err(409, "Slug already exists", {
+    suggested_slug: suggestedSlug,
   });
 }
 

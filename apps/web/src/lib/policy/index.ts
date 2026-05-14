@@ -6,6 +6,8 @@ import {
 } from "@second-brain/shared";
 
 export type PolicyOperation =
+  | "search"
+  | "get"
   | "create"
   | "edit"
   | "append"
@@ -56,7 +58,7 @@ const lockedExactPaths = new Set([
 
 export function canWrite(
   principal: PolicyPrincipal,
-  op: PolicyOperation,
+  op: Exclude<PolicyOperation, "search" | "get">,
   target: PolicyTarget,
 ): PolicyDecision {
   if (op === "delete") {
@@ -79,6 +81,18 @@ export function canWrite(
   }
 
   return agentDecision(principal.scopes, op, path);
+}
+
+export function canRead(
+  principal: PolicyPrincipal,
+  op: Extract<PolicyOperation, "search" | "get">,
+  target: PolicyTarget,
+): PolicyDecision {
+  if (principal.kind === "human") {
+    return { allowed: true };
+  }
+
+  return agentDecision(principal.scopes, op, targetPath(target));
 }
 
 export function validateFrontmatter(

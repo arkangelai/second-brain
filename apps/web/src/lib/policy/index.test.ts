@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 
 import { scopeTemplates } from "@second-brain/shared";
 
-import { canWrite, type PolicyPrincipal } from "./index";
+import { canRead, canWrite, type PolicyPrincipal } from "./index";
 
 const human: PolicyPrincipal = {
   kind: "human",
@@ -103,5 +103,52 @@ describe("canWrite", () => {
 
     expect(decision.allowed).toBe(false);
     if (!decision.allowed) expect(decision.reason).toContain("Unknown frontmatter key");
+  });
+});
+
+describe("canRead", () => {
+  it("allows human members to read regular notes", () => {
+    expect(
+      canRead(human, "get", {
+        folder: "06_system/private",
+        slug: "strategy",
+      }),
+    ).toEqual({ allowed: true });
+  });
+
+  it("denies agent reads outside read_paths", () => {
+    const scopedAgent: PolicyPrincipal = {
+      ...agent,
+      scopes: {
+        ...scopeTemplates.reader,
+        read_paths: ["01_thinking/notes/**"],
+      },
+    };
+
+    const decision = canRead(scopedAgent, "get", {
+      folder: "06_system/private",
+      slug: "strategy",
+    });
+
+    expect(decision.allowed).toBe(false);
+    if (!decision.allowed) expect(decision.code).toBe("path_not_allowed");
+  });
+
+  it("denies agent search when get/search ops are missing", () => {
+    const scopedAgent: PolicyPrincipal = {
+      ...agent,
+      scopes: {
+        ...scopeTemplates.reader,
+        ops: [],
+      },
+    };
+
+    const decision = canRead(scopedAgent, "search", {
+      folder: "01_thinking/notes",
+      slug: "strategy",
+    });
+
+    expect(decision.allowed).toBe(false);
+    if (!decision.allowed) expect(decision.code).toBe("op_not_allowed");
   });
 });
