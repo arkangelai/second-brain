@@ -89,10 +89,12 @@ export const ListNotesResponseSchema = z.object({
 });
 export type ListNotesResponse = z.infer<typeof ListNotesResponseSchema>;
 
+const NoteRequestTitleSchema = z.string().trim().min(1);
+
 export const CreateNoteRequestSchema = z.object({
   slug: z.string().min(1).optional(),
   folder: z.string().min(1).optional(),
-  title: z.string().min(1),
+  title: NoteRequestTitleSchema,
   body: z.string().default(""),
   frontmatter: NoteFrontmatterSchema.partial().default({}),
 });
@@ -102,7 +104,7 @@ export const PatchNoteRequestSchema = z
   .object({
     if_version: z.number().int().positive(),
     body: z.string().optional(),
-    title: z.string().min(1).optional(),
+    title: NoteRequestTitleSchema.optional(),
     folder: z.string().min(1).optional(),
     frontmatter_patch: NoteFrontmatterSchema.partial().optional(),
   })

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { AgentScopesSchema } from "@second-brain/shared";
 
 import { jsonError } from "@/lib/api/responses";
 import { logAgentEvent } from "@/lib/auth/agentAuth";
@@ -63,8 +64,11 @@ export async function POST(request: Request): Promise<NextResponse> {
   const name = typeof body.name === "string" ? body.name.trim() : "";
   if (!name) return jsonError("Agent name is required", 400);
 
-  const scopes = validScopes(body.scopes) ? body.scopes : null;
-  if (!scopes) return jsonError("Scopes must be a JSON object or array", 400);
+  const scopesResult = AgentScopesSchema.safeParse(body.scopes);
+  if (!scopesResult.success) {
+    return jsonError("Scopes must match the agent scopes schema", 400);
+  }
+  const scopes = scopesResult.data;
 
   const memberId = crypto.randomUUID();
   const key = generateKey(context.team.slug);
@@ -134,11 +138,6 @@ export async function POST(request: Request): Promise<NextResponse> {
     },
     { status: 201 },
   );
-}
-
-function validScopes(scopes: unknown): scopes is Record<string, unknown> | unknown[] {
-  if (Array.isArray(scopes)) return true;
-  return Boolean(scopes) && typeof scopes === "object";
 }
 
 function toAgentSummary(agent: AgentRow) {
