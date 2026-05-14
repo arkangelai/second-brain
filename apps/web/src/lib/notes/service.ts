@@ -51,6 +51,64 @@ export type RevisionList = {
   next_before: string | null;
 };
 
+export type NotesList = {
+  notes: NoteRecord[];
+  next_updated_before: string | null;
+};
+
+export async function listNotes(
+  principal: NotesPrincipal,
+  {
+    includeArchived,
+    folder,
+    q,
+    updatedBefore,
+    limit,
+  }: {
+    includeArchived: boolean;
+    folder?: string | null;
+    q?: string | null;
+    updatedBefore?: string | null;
+    limit: number;
+  },
+): Promise<NotesResult<NotesList>> {
+  return withPrincipalTeam(principal, async (client) => {
+    const boundedLimit = Math.min(Math.max(limit, 1), 200);
+    const result = await client.query<DbNoteRow>(
+      `select *
+         from public.notes
+        where team_id = $1
+          and ($2::boolean or archived_at is null)
+          and ($3::text is null or folder = $3)
+          and ($4::text is null or updated_at < $4::timestamptz)
+          and (
+            $5::text is null
+            or slug::text ilike '%' || $5 || '%'
+            or title ilike '%' || $5 || '%'
+            or body ilike '%' || $5 || '%'
+          )
+        order by updated_at desc, id desc
+        limit $6`,
+      [
+        principal.team_id,
+        includeArchived,
+        folder?.trim() || null,
+        updatedBefore ?? null,
+        q?.trim() || null,
+        boundedLimit,
+      ],
+    );
+
+    return ok({
+      notes: result.rows.map(toNoteRecord),
+      next_updated_before:
+        result.rows.length === boundedLimit
+          ? toNoteRecord(result.rows[result.rows.length - 1]).updated_at
+          : null,
+    });
+  });
+}
+
 export async function getNote(
   principal: NotesPrincipal,
   slug: string,
@@ -188,12 +246,13 @@ export async function patchNote(
     if (!current) return err(404, "Note not found");
     if (current.archived_at) return err(410, "Note archived");
 
+    const nextFolder = request.folder ? normalizeFolder(request.folder) : current.folder;
     const nextFrontmatter = {
       ...current.frontmatter,
       ...(request.frontmatter_patch ?? {}),
     };
     const policy = canWrite(principal, "edit", {
-      folder: current.folder,
+      folder: nextFolder,
       slug: current.slug,
       frontmatter: nextFrontmatter,
     });
@@ -208,7 +267,8 @@ export async function patchNote(
       `update public.notes
           set body = coalesce($4, body),
               title = coalesce($5, title),
-              frontmatter = $6::jsonb
+              folder = coalesce($6, folder),
+              frontmatter = $7::jsonb
         where id = $1
           and team_id = $2
           and version = $3
@@ -219,6 +279,7 @@ export async function patchNote(
         request.if_version,
         request.body ?? null,
         request.title?.trim() || null,
+        request.folder ? nextFolder : null,
         JSON.stringify(nextFrontmatter),
       ],
     );

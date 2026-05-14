@@ -81,6 +81,12 @@ export const NoteRevisionsResponseSchema = z.object({
 });
 export type NoteRevisionsResponse = z.infer<typeof NoteRevisionsResponseSchema>;
 
+export const ListNotesResponseSchema = z.object({
+  notes: z.array(NoteRecordSchema),
+  next_updated_before: z.string().datetime().nullable(),
+});
+export type ListNotesResponse = z.infer<typeof ListNotesResponseSchema>;
+
 export const CreateNoteRequestSchema = z.object({
   slug: z.string().min(1).optional(),
   folder: z.string().min(1).optional(),
@@ -95,12 +101,14 @@ export const PatchNoteRequestSchema = z
     if_version: z.number().int().positive(),
     body: z.string().optional(),
     title: z.string().min(1).optional(),
+    folder: z.string().min(1).optional(),
     frontmatter_patch: NoteFrontmatterSchema.partial().optional(),
   })
   .refine(
     (value) =>
       value.body !== undefined ||
       value.title !== undefined ||
+      value.folder !== undefined ||
       value.frontmatter_patch !== undefined,
     "At least one patch field is required",
   );

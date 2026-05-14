@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 
 import type { TeamMembership } from "@/lib/auth/active-team";
@@ -37,20 +38,28 @@ export function TeamSwitcher({
   }
 
   return (
-    <label className="flex items-center gap-2 text-sm text-muted-foreground">
-      <span>Team</span>
+    <label className="group relative inline-flex items-center gap-2 rounded-md border border-stone-800/80 bg-stone-950/60 pl-3 pr-2 font-[family-name:var(--font-plex-mono)] text-[11px] uppercase tracking-[0.24em] text-stone-400 transition focus-within:border-amber-200/60 hover:border-stone-700">
+      <span>Vault</span>
       <select
         value={value}
         onChange={(event) => void switchTeam(event.target.value)}
         disabled={isSwitching}
-        className="h-9 min-w-40 rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors focus:border-ring focus:ring-1 focus:ring-ring"
+        className="h-9 min-w-40 appearance-none bg-transparent pr-5 text-stone-100 outline-none disabled:opacity-50"
       >
         {memberships.map((membership) => (
-          <option key={membership.teamId} value={membership.teamId}>
+          <option
+            key={membership.teamId}
+            value={membership.teamId}
+            className="bg-stone-950 text-stone-100"
+          >
             {membership.team.name}
           </option>
         ))}
       </select>
+      <ChevronDown
+        className="pointer-events-none size-3.5 text-stone-500"
+        aria-hidden
+      />
     </label>
   );
 }

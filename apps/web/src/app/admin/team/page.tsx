@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { TeamAdminClient } from "./team-admin-client";
+import { ArchiveCard, ArchiveEyebrow } from "@/components/archive/archive-shell";
 import { AdminTeamError, getTeamAdminPageData } from "@/lib/admin/team";
 
 export const metadata: Metadata = {
@@ -41,16 +42,24 @@ function AdminTeamErrorState({ error }: { error: unknown }) {
       : "The team admin page could not be loaded.";
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-background p-6">
-      <section className="w-full max-w-md rounded-lg border border-border bg-card p-6 text-card-foreground shadow-sm">
-        <p className="text-sm font-medium text-muted-foreground">
+    <main className="flex min-h-[60dvh] items-center justify-center px-6 py-12">
+      <ArchiveCard
+        index="Card / 0399"
+        kind="error"
+        className="w-full max-w-lg hover:rotate-0"
+        rotate={-0.3}
+      >
+        <ArchiveEyebrow tone="amber" className="mb-3">
           Team admin unavailable
-        </p>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight">
+        </ArchiveEyebrow>
+        <h1
+          className="font-[family-name:var(--font-fraunces)] text-[2rem] leading-tight text-stone-100"
+          style={{ fontVariationSettings: "'opsz' 48" }}
+        >
           Check your team access
         </h1>
-        <p className="mt-3 text-sm text-muted-foreground">{message}</p>
-      </section>
+        <p className="mt-3 text-sm leading-relaxed text-stone-400">{message}</p>
+      </ArchiveCard>
     </main>
   );
 }

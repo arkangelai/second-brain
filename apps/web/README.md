@@ -93,6 +93,21 @@ Team member API keys are stored in `team_member_api_keys`, linked to
 `team_members` by `(team_id, member_id)`. This lets either a human member or an
 agent member have multiple independently revocable keys for rotation.
 
+### Issuing an agent key
+
+Owners and admins can issue agent keys from `/admin/agents` in the web app.
+The page uses the signed-in browser session to create an agent membership and
+reveals the plaintext API key once. Store that key outside the repository, then
+pass it to agent-facing API calls as:
+
+```bash
+Authorization: Bearer <agent-key>
+```
+
+Agent keys authenticate against the Notes API (`/api/notes`, append/link,
+revision, archive, and restore endpoints). The agent-facing CLI/API guide lives
+at `packages/cli/AGENT_CLI.md` from the repo root.
+
 ## Web app
 
 ```bash

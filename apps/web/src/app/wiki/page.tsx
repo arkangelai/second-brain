@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -16,18 +17,20 @@ import {
 } from "@/lib/auth/active-team";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
-export default async function AdminLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+import { WikiClient } from "./wiki-client";
+
+export const metadata: Metadata = {
+  title: "Wiki | Second Brain",
+};
+
+export default async function WikiPage() {
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/login?next=/admin/team");
+    redirect("/login?next=/wiki");
   }
 
   const cookieStore = await cookies();
@@ -41,22 +44,26 @@ export default async function AdminLayout({
   const activeTeamId = resolveActiveTeamId(
     memberships,
     cookieStore.get(ACTIVE_TEAM_COOKIE)?.value,
-    defaultTeamId
+    defaultTeamId,
   );
 
   if (!activeTeamId) {
     redirect("/onboarding");
   }
 
+  const activeMembership = memberships.find(
+    (membership) => membership.teamId === activeTeamId,
+  );
+
   return (
     <div className="relative isolate min-h-dvh overflow-hidden bg-[#0b0f0d] text-stone-200 antialiased">
       <ArchiveBackdrop variant="spread" />
 
       <header className="relative border-b border-stone-800/70 bg-stone-950/40 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between gap-4 px-4 sm:px-6">
           <div className="flex items-center gap-5">
             <Link
-              href="/admin/team"
+              href="/wiki"
               className="flex items-center gap-3 font-[family-name:var(--font-plex-mono)] text-[11px] uppercase tracking-[0.24em] text-stone-300 transition hover:text-teal-100"
             >
               <span className="relative inline-flex h-2 w-2">
@@ -65,27 +72,28 @@ export default async function AdminLayout({
               </span>
               <span>Second Brain</span>
               <span className="text-stone-700">/</span>
-              <span className="text-stone-400">Admin</span>
+              <span className="text-stone-400">Wiki</span>
             </Link>
             <nav className="hidden items-center gap-1 md:flex">
-              <AdminNavLink
+              <WikiNavLink
                 href="/wiki"
                 icon={<BookOpen className="size-3.5" aria-hidden />}
+                active
               >
                 Wiki
-              </AdminNavLink>
-              <AdminNavLink
+              </WikiNavLink>
+              <WikiNavLink
                 href="/admin/team"
                 icon={<Users className="size-3.5" aria-hidden />}
               >
                 Team
-              </AdminNavLink>
-              <AdminNavLink
+              </WikiNavLink>
+              <WikiNavLink
                 href="/admin/agents"
                 icon={<BotMessageSquare className="size-3.5" aria-hidden />}
               >
                 Agents
-              </AdminNavLink>
+              </WikiNavLink>
             </nav>
           </div>
           <div className="flex items-center gap-3">
@@ -103,53 +111,69 @@ export default async function AdminLayout({
           </div>
         </div>
         <div className="border-t border-stone-800/60 bg-stone-950/30 md:hidden">
-          <div className="mx-auto flex max-w-7xl items-center gap-1 px-4 py-2">
-            <AdminNavLink
+          <div className="mx-auto flex max-w-[1440px] items-center gap-1 px-4 py-2">
+            <WikiNavLink
               href="/wiki"
               icon={<BookOpen className="size-3.5" aria-hidden />}
+              active
             >
               Wiki
-            </AdminNavLink>
-            <AdminNavLink
+            </WikiNavLink>
+            <WikiNavLink
               href="/admin/team"
               icon={<Users className="size-3.5" aria-hidden />}
             >
               Team
-            </AdminNavLink>
-            <AdminNavLink
+            </WikiNavLink>
+            <WikiNavLink
               href="/admin/agents"
               icon={<BotMessageSquare className="size-3.5" aria-hidden />}
             >
               Agents
-            </AdminNavLink>
+            </WikiNavLink>
           </div>
         </div>
       </header>
-      <div className="relative">{children}</div>
+
+      <WikiClient
+        activeTeamId={activeTeamId}
+        teamName={activeMembership?.team.name ?? "Team"}
+        canAdmin={
+          activeMembership?.role === "owner" || activeMembership?.role === "admin"
+        }
+      />
     </div>
   );
 }
 
-function AdminNavLink({
+function WikiNavLink({
   href,
   icon,
   children,
+  active = false,
 }: {
   href: string;
   icon?: React.ReactNode;
   children: React.ReactNode;
+  active?: boolean;
 }) {
   return (
     <Link
       href={href}
-      className="group inline-flex items-center gap-2 rounded-md px-3 py-1.5 font-[family-name:var(--font-plex-mono)] text-[11px] uppercase tracking-[0.24em] text-stone-400 transition hover:bg-stone-900/60 hover:text-stone-100"
+      className={
+        active
+          ? "group inline-flex items-center gap-2 rounded-md border border-teal-300/30 bg-teal-300/10 px-3 py-1.5 font-[family-name:var(--font-plex-mono)] text-[11px] uppercase tracking-[0.24em] text-teal-100 transition"
+          : "group inline-flex items-center gap-2 rounded-md px-3 py-1.5 font-[family-name:var(--font-plex-mono)] text-[11px] uppercase tracking-[0.24em] text-stone-400 transition hover:bg-stone-900/60 hover:text-stone-100"
+      }
     >
       {icon}
       <span>{children}</span>
-      <ArrowUpRight
-        className="size-3 -translate-x-1 opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-60"
-        aria-hidden
-      />
+      {!active ? (
+        <ArrowUpRight
+          className="size-3 -translate-x-1 opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-60"
+          aria-hidden
+        />
+      ) : null}
     </Link>
   );
 }

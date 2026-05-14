@@ -6,6 +6,17 @@ import { resolveAdminContext } from "@/lib/auth/admin";
 
 export const runtime = "nodejs";
 
+type AgentRow = {
+  member_id: string;
+  display_name: string | null;
+  scopes: unknown;
+  active: boolean;
+  revoked_at: string | null;
+  last_seen_at: string | null;
+  joined_at: string;
+  created_by_user_id: string | null;
+};
+
 export async function POST(
   request: Request,
   context: { params: Promise<{ id: string }> },
@@ -56,17 +67,7 @@ export async function POST(
   });
 
   return NextResponse.json({
-    agent: {
-      id: agent.member_id,
-      team_id: admin.team.id,
-      name: agent.display_name,
-      scopes: agent.scopes,
-      active: agent.active,
-      revoked_at: agent.revoked_at,
-      last_seen_at: agent.last_seen_at,
-      created_at: agent.joined_at,
-      created_by_user_id: agent.created_by_user_id,
-    },
+    agent: toAgentSummary(agent as AgentRow),
   });
 }
 
@@ -74,4 +75,17 @@ function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
     value,
   );
+}
+
+function toAgentSummary(agent: AgentRow) {
+  return {
+    id: agent.member_id,
+    name: agent.display_name ?? "Unnamed agent",
+    description: "",
+    status: agent.active && !agent.revoked_at ? "active" : "revoked",
+    scopes: agent.scopes,
+    lastSeen: agent.last_seen_at,
+    createdBy: agent.created_by_user_id,
+    createdAt: agent.joined_at,
+  };
 }
