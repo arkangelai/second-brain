@@ -19,6 +19,12 @@ export async function GET(
   const url = new URL(request.url);
   const limit = Number.parseInt(url.searchParams.get("limit") || "50", 10);
   const before = url.searchParams.get("before");
+  if (before !== null && Number.isNaN(Date.parse(before))) {
+    return NextResponse.json(
+      { error: "Invalid 'before' parameter; expected an ISO 8601 timestamp" },
+      { status: 400 },
+    );
+  }
   const full = url.searchParams.get("full") === "true";
   const { slug } = await context.params;
   const result = await listRevisions(principal, slug, {

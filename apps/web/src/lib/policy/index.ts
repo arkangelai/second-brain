@@ -194,12 +194,7 @@ function agentDecision(
     };
   }
 
-  const scopeOp = op === "link" ? "append" : op;
-  const decision = matchScope(
-    { ...scopes, ops: [...new Set([...scopes.ops, scopeOp as AgentScopeOperation])] },
-    path,
-    scopeOp as AgentScopeOperation,
-  );
+  const decision = matchScope(scopes, path, op as AgentScopeOperation);
 
   if (decision.allowed) return { allowed: true };
 

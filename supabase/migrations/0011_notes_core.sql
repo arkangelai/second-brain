@@ -4,6 +4,7 @@
 
 create extension if not exists citext;
 create extension if not exists pg_trgm;
+create extension if not exists unaccent;
 
 create table public.notes (
   id                       uuid primary key default gen_random_uuid(),
@@ -142,6 +143,33 @@ begin
 end;
 $$;
 
+-- Mirrors slugifyTitle() in apps/web/src/lib/notes/markdown.ts so the
+-- link-refresh trigger persists canonical slugs (lowercase, ASCII, hyphenated)
+-- instead of the raw inner text of `[[ ... ]]`. Keep these in sync.
+create or replace function public.notes_slugify(input text)
+returns text
+language sql
+immutable
+as $$
+  select case
+    when slug = '' then 'untitled'
+    else slug
+  end
+  from (
+    select regexp_replace(
+      regexp_replace(
+        lower(unaccent(coalesce(regexp_replace(input, '\.md$', '', 'i'), ''))),
+        '[^a-z0-9]+',
+        '-',
+        'g'
+      ),
+      '^-+|-+$',
+      '',
+      'g'
+    ) as slug
+  ) s
+$$;
+
 create or replace function public.refresh_note_links()
 returns trigger
 language plpgsql
@@ -151,7 +179,7 @@ begin
   delete from public.note_links where source_id = new.id;
 
   insert into public.note_links (team_id, source_id, target_slug)
-  select distinct new.team_id, new.id, link_match[1]::citext
+  select distinct new.team_id, new.id, public.notes_slugify(link_match[1])::citext
   from regexp_matches(
     public.notes_body_without_fenced_code(new.body),
     '\[\[([^\]|#]+)(?:[|#][^\]]*)?\]\]',
