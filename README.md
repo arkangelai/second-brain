@@ -34,16 +34,44 @@ The stack:
 - [Bun](https://bun.sh) installed (`curl -fsSL https://bun.sh/install | bash`)
 - [Obsidian](https://obsidian.md) installed (free, for reading/navigating your vault)
 
+### Repository Layout
+
+This is a Bun-workspaces monorepo:
+
+```
+arkangelai/second-brain/
+├── apps/
+│   └── web/                      # Next.js 16, the brain server
+├── packages/
+│   ├── cli/                       # Bun CLI (sb) — was the repo root
+│   └── shared/                    # Zod contracts, types
+├── package.json                   # workspaces root
+├── tsconfig.base.json
+└── README.md
+```
+
+> The full layout rewrite tracks under issue [8.1]. The structure above and the commands below are stable for 0.1.
+
 ### Install
 
 ```bash
 git clone https://github.com/arkangelai/second-brain.git
 cd second-brain
-bun install
-bun link
+bun install                       # installs all workspaces
+cd packages/cli && bun link
 ```
 
-This installs dependencies and registers `second-brain` as a global command so it works from any directory (including Obsidian's Claude Sidebar).
+`bun install` resolves every workspace; `bun link` (from `packages/cli`) registers `second-brain` as a global command so it works from any directory (including Obsidian's Claude Sidebar).
+
+### Run (from repo root)
+
+| Command              | What it does |
+|----------------------|--------------|
+| `bun run dev`        | Boots `apps/web` (Next.js on :3000) + `packages/cli` in watch mode, in parallel |
+| `bun run dev:web`    | Just the Next.js dev server |
+| `bun run dev:cli`    | Just the CLI in watch mode |
+| `bun run test`       | Runs tests in every package |
+| `bun run typecheck`  | Type-checks every workspace |
 
 ### One-command setup
 

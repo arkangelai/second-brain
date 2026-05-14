@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["@types/bun"],
+    "outDir": "dist",
+    "rootDir": "."
+  },
+  "include": ["bin/**/*.ts", "src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "vault", "tools"]
+}
