@@ -25,6 +25,15 @@ const serverSchema = z
         1,
         "must be set (Supabase project settings → API Keys → Secret keys, sb_secret_...)"
       ),
+    SUPABASE_DB_URL: z.preprocess(
+      (value) => (value === "" ? undefined : value),
+      z
+        .string()
+        .url(
+          "must be a postgres connection string (Supabase project settings → Database → Connection string, transaction-pooler URI)"
+        )
+        .optional()
+    ),
     AI_GATEWAY_API_KEY: z
       .string()
       .min(1, "must be set (Vercel dashboard → AI Gateway → API keys)"),

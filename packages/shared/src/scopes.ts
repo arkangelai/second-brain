@@ -1,3 +1,4 @@
+import picomatch from "picomatch";
 import { z } from "zod";
 
 export const AgentScopeOperationSchema = z.enum([
@@ -105,4 +106,81 @@ export function summarizeAgentScopes(scopes: AgentScopes): string {
   if (appendCount > 0) parts.push(`${appendCount} append path${appendCount === 1 ? "" : "s"}`);
 
   return parts.join(" · ");
+}
+
+// Maps each operation to the path bucket whose globs gate it.
+//
+// `append` is special: it's allowed when the path matches `append_paths` *or*
+// `write_paths` (a writer scope can append anywhere it can write, but an
+// append-only scope is limited to its append bucket).
+const opPathBucket: Record<
+  AgentScopeOperation,
+  "read_paths" | "write_paths" | "append_paths"
+> = {
+  search: "read_paths",
+  get: "read_paths",
+  create: "write_paths",
+  edit: "write_paths",
+  append: "append_paths",
+  link: "write_paths",
+  ingest: "write_paths",
+  archive: "write_paths",
+};
+
+export type ScopeMatch =
+  | { allowed: true }
+  | { allowed: false; reason: "op_not_allowed" | "path_not_allowed" };
+
+// Returns whether the agent may perform `op` on `path` under `scopes`.
+// Path matching uses picomatch globs (e.g. `01_thinking/notes/**`).
+// Path comparison is case-sensitive and treats `/` as the separator.
+export function matchScope(
+  scopes: AgentScopes,
+  path: string,
+  op: AgentScopeOperation
+): ScopeMatch {
+  if (!scopes.ops.includes(op)) {
+    return { allowed: false, reason: "op_not_allowed" };
+  }
+
+  const normalized = normalizePath(path);
+  if (!normalized) {
+    return { allowed: false, reason: "path_not_allowed" };
+  }
+
+  const bucket = opPathBucket[op];
+  const primary = scopes[bucket];
+
+  if (matchesAny(primary, normalized)) return { allowed: true };
+
+  // Allow append when the path is inside the agent's write paths too —
+  // a writer scope shouldn't have to redeclare write paths as append paths.
+  if (op === "append" && matchesAny(scopes.write_paths, normalized)) {
+    return { allowed: true };
+  }
+
+  return { allowed: false, reason: "path_not_allowed" };
+}
+
+function matchesAny(globs: string[], path: string): boolean {
+  if (globs.length === 0) return false;
+  return picomatch.isMatch(path, globs, { dot: true });
+}
+
+function normalizePath(path: string): string {
+  const normalized: string[] = [];
+
+  for (const segment of path.replace(/\\/g, "/").split("/")) {
+    if (!segment || segment === ".") continue;
+
+    if (segment === "..") {
+      if (normalized.length === 0) return "";
+      normalized.pop();
+      continue;
+    }
+
+    normalized.push(segment);
+  }
+
+  return normalized.join("/");
 }

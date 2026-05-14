@@ -59,6 +59,9 @@ type AgentAuthQuery = {
 let supabaseStub: SupabaseStub;
 
 mock.module("server-only", () => ({}));
+mock.module("@second-brain/shared/env", () => ({
+  serverEnv: { SUPABASE_DB_URL: undefined },
+}));
 mock.module("@/lib/supabase/admin", () => ({
   createSupabaseAdminClient: () => supabaseStub.client,
 }));
@@ -126,16 +129,52 @@ describe("authenticateAgentRequest", () => {
       console.error = originalConsoleError;
     }
   });
+
+  it("authenticates valid keys when activity updates fail", async () => {
+    const key = generateKey("dev");
+    const keyHash = await hashKey(key.plaintext);
+    supabaseStub = createSupabaseStub({
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      keyHash,
+      updateThrows: true,
+    });
+    const originalConsoleError = console.error;
+    console.error = mock(() => {});
+
+    try {
+      const auth = await authenticateAgentRequest(
+        new Request("http://localhost/api/whoami", {
+          headers: {
+            authorization: `Bearer ${key.plaintext}`,
+            "user-agent": "bun-test",
+          },
+        }),
+      );
+
+      expect(auth?.key.id).toBe("key-id");
+      expect(auth?.agent.member_id).toBe("agent-id");
+      expect(
+        supabaseStub.inserts.some(
+          (insert) => insert.table === "agent_auth_failures",
+        ),
+      ).toBe(false);
+      expect(console.error).toHaveBeenCalled();
+    } finally {
+      console.error = originalConsoleError;
+    }
+  });
 });
 
 function createSupabaseStub({
   agentLookupError = false,
   expiresAt,
   keyHash,
+  updateThrows = false,
 }: {
   agentLookupError?: boolean;
   expiresAt: string;
   keyHash: string;
+  updateThrows?: boolean;
 }): SupabaseStub {
   const inserts: InsertedRow[] = [];
   const updates: InsertedRow[] = [];
@@ -216,6 +255,7 @@ function createSupabaseStub({
             return { data: null, error: null };
           },
           update(payload: Record<string, unknown>) {
+            if (updateThrows) throw new Error("activity update failed");
             updates.push({ table, payload });
             return query;
           },

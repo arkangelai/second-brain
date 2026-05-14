@@ -83,3 +83,14 @@
     @apply bg-background text-foreground;
   }
 }
+
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(1.25rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

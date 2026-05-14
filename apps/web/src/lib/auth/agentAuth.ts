@@ -1,7 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { serverEnv } from "@second-brain/shared/env";
+
 import { parseAgentKey, verifyKey } from "./agentKeys";
 import { bearerToken, clientIp } from "./request";
+import { withTeamContext } from "@/lib/db/withTeamContext";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const DEFAULT_FAILURE_LIMIT = 10;
@@ -190,17 +193,22 @@ export async function authenticateAgentRequest(
   }
 
   const now = new Date().toISOString();
-  await Promise.all([
-    supabase
-      .from("team_member_api_keys")
-      .update({ last_used_at: now })
-      .eq("id", typedKey.id),
-    supabase
-      .from("team_members")
-      .update({ last_seen_at: now })
-      .eq("team_id", team.id)
-      .eq("member_id", typedKey.member_id),
-  ]);
+  try {
+    await touchAgentActivity({
+      supabase,
+      teamId: team.id,
+      memberId: typedKey.member_id,
+      keyId: typedKey.id,
+      now,
+    });
+  } catch (error) {
+    console.error("Unable to update agent activity after successful auth", {
+      teamId: team.id,
+      memberId: typedKey.member_id,
+      keyId: typedKey.id,
+      error,
+    });
+  }
 
   return {
     supabase,
@@ -212,6 +220,53 @@ export async function authenticateAgentRequest(
     agent: agent as AgentRecord,
     key: typedKey,
   };
+}
+
+// Writes last_used_at / last_seen_at after a successful agent authentication.
+//
+// When SUPABASE_DB_URL is configured, both writes happen inside a single
+// transaction with app.team_id set to the agent's team — exercising the RLS
+// scope primitive (see supabase/migrations/0001_init.sql, app_set_team). When
+// SUPABASE_DB_URL is unset (e.g. local UI dev), falls back to the service-role
+// Supabase client which bypasses RLS.
+async function touchAgentActivity(args: {
+  supabase: SupabaseClient;
+  teamId: string;
+  memberId: string;
+  keyId: string;
+  now: string;
+}): Promise<void> {
+  const { supabase, teamId, memberId, keyId, now } = args;
+
+  if (serverEnv.SUPABASE_DB_URL) {
+    await withTeamContext(
+      teamId,
+      async (client) => {
+        await client.query(
+          "update public.team_member_api_keys set last_used_at = $1 where id = $2",
+          [now, keyId],
+        );
+        await client.query(
+          "update public.team_members set last_seen_at = $1 where team_id = $2 and member_id = $3",
+          [now, teamId, memberId],
+        );
+      },
+      { trusted: true },
+    );
+    return;
+  }
+
+  await Promise.all([
+    supabase
+      .from("team_member_api_keys")
+      .update({ last_used_at: now })
+      .eq("id", keyId),
+    supabase
+      .from("team_members")
+      .update({ last_seen_at: now })
+      .eq("team_id", teamId)
+      .eq("member_id", memberId),
+  ]);
 }
 
 export async function logAgentEvent(
